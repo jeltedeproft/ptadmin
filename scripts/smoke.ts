@@ -1,0 +1,150 @@
+// Smoke test for the money-relevant logic. Run with: npm test
+import { buildLedger, isChargeable, signalFor } from "../src/domain/credits";
+import { addMonths, daysBetween, formatEuro, startOfWeek, toIso } from "../src/domain/dates";
+import { buildProductCode, findPrice } from "../src/domain/pricing";
+import { socialStatus, vatStatus } from "../src/domain/thresholds";
+import { nextNumber } from "../src/domain/invoicing";
+import { DEFAULT_PRICES, DEFAULT_SETTINGS } from "../src/db/seed";
+import type { Session, Transaction } from "../src/db/schema";
+
+let failures = 0;
+function check(name: string, actual: unknown, expected: unknown) {
+  const a = JSON.stringify(actual);
+  const e = JSON.stringify(expected);
+  if (a === e) {
+    console.log(`  ok   ${name}`);
+  } else {
+    failures++;
+    console.log(`  FAIL ${name}\n         verwacht ${e}\n         kreeg    ${a}`);
+  }
+}
+
+// ---------- dates ----------
+console.log("\ndates");
+check("EDATE 4 maanden", addMonths("2026-07-28", 4), "2026-11-28");
+check("EDATE klemt op korte maand", addMonths("2026-01-31", 1), "2026-02-28");
+check("EDATE 6 maanden over jaargrens", addMonths("2026-10-15", 6), "2027-04-15");
+check("daysBetween", daysBetween("2026-01-01", "2026-01-31"), 30);
+check("week start op maandag", startOfWeek(new Date(2026, 6, 31)), "2026-07-27");
+check("euro formatting", formatEuro(650).replace(/ | /g, " "), "€ 650,00");
+
+// ---------- pricing ----------
+console.log("\npricing");
+check("productcode privéruimte solo pakket", buildProductCode("Privéruimte", "Solo", "Pakket 10"), "PR-SOLO-10");
+check("productcode aan huis semi los", buildProductCode("Aan huis", "Semi PT", "Losse sessie"), "AH-SEMI-LOS");
+check("productcode online solo pakket", buildProductCode("Online", "Solo", "Pakket 10"), "ON-SOLO-10");
+check("prijs PR-SOLO-10", findPrice(DEFAULT_PRICES, "Privéruimte", "Solo", "Pakket 10")?.amount, 650);
+check("geldigheid AH-SOLO-10", findPrice(DEFAULT_PRICES, "Aan huis", "Solo", "Pakket 10")?.validityMonths, 6);
+check("online losse sessie kost 40", findPrice(DEFAULT_PRICES, "Online", "Solo", "Losse sessie")?.amount, 40);
+check("online pakket kost 10x40", findPrice(DEFAULT_PRICES, "Online", "Duo", "Pakket 10")?.amount, 400);
+check("elke locatie/type/product heeft een prijs", DEFAULT_PRICES.length, 18);
+check("alle SKU's oplosbaar", DEFAULT_PRICES.every((p) => findPrice(DEFAULT_PRICES, p.location, p.sessionType, p.product)?.code === p.code), true);
+check("geen dubbele codes", new Set(DEFAULT_PRICES.map((p) => p.code)).size, DEFAULT_PRICES.length);
+
+// ---------- credits ----------
+console.log("\ncredits");
+const pack = (id: number, date: string, months: number, credits = 10): Transaction => ({
+  id,
+  date,
+  clientId: 1,
+  location: "Privéruimte",
+  sessionType: "Solo",
+  product: "Pakket 10",
+  productCode: "PR-SOLO-10",
+  creditsBought: credits,
+  amount: 650,
+  validityMonths: months,
+  expiresOn: months > 0 ? addMonths(date, months) : undefined,
+  paid: true,
+  invoiceNeeded: false,
+});
+const sess = (id: number, date: string, status: Session["status"] = "Uitgevoerd", type: Session["sessionType"] = "Solo"): Session => ({
+  id,
+  date,
+  clientId: 1,
+  location: "Privéruimte",
+  sessionType: type,
+  status,
+});
+
+check("chargeable statuses", ["Uitgevoerd", "Te laat geannuleerd", "Niet verschenen", "Geannuleerd op tijd", "Niet aangerekend"].map(isChargeable as never), [true, true, true, false, false]);
+
+const basic = buildLedger([pack(1, "2026-01-10", 4)], [sess(1, "2026-01-12"), sess(2, "2026-01-19"), sess(3, "2026-01-26")], "2026-02-01");
+check("3 van 10 gebruikt", basic.available, 7);
+check("vervaldatum doorgegeven", basic.nextExpiry, "2026-05-10");
+check("niets onbetaald", basic.uncoveredSessionIds, []);
+
+const cancelled = buildLedger([pack(1, "2026-01-10", 4)], [sess(1, "2026-01-12", "Geannuleerd op tijd"), sess(2, "2026-01-19", "Te laat geannuleerd"), sess(3, "2026-01-20", "Niet aangerekend")], "2026-02-01");
+check("alleen te laat geannuleerd kost credit", cancelled.available, 9);
+
+const expired = buildLedger([pack(1, "2026-01-10", 4, 10)], [sess(1, "2026-01-12")], "2026-07-01");
+check("verlopen pakket telt niet mee als beschikbaar", expired.available, 0);
+check("verlopen credits geteld als verspeeld", expired.forfeited, 9);
+check("signaal bij verlopen pakket", signalFor(expired, "2026-01-12", 30, "2026-07-01"), "verlopen");
+
+// A session after expiry must not be paid for by the expired pack.
+const afterExpiry = buildLedger([pack(1, "2026-01-10", 4)], [sess(1, "2026-06-01")], "2026-06-02");
+check("sessie na vervaldatum is niet gedekt", afterExpiry.uncoveredSessionIds, [1]);
+
+// FIFO: the older pack drains first even when a newer one exists.
+const fifo = buildLedger(
+  [pack(1, "2026-01-10", 4, 2), pack(2, "2026-02-10", 4, 10)],
+  [sess(1, "2026-02-15"), sess(2, "2026-02-16"), sess(3, "2026-02-17")],
+  "2026-03-01",
+);
+check("oudste pakket eerst leeg", fifo.packs.map((p) => p.remaining), [0, 9]);
+
+// Credits are bucketed: a Solo pack cannot pay for a Duo session.
+const buckets = buildLedger([pack(1, "2026-01-10", 4)], [sess(1, "2026-01-12", "Uitgevoerd", "Duo")], "2026-02-01");
+check("duo-sessie put niet uit solo-pakket", buckets.available, 10);
+check("duo-sessie blijft ongedekt", buckets.uncoveredSessionIds, [1]);
+
+// A session logged before the purchase date should not be covered retroactively.
+const beforePurchase = buildLedger([pack(1, "2026-02-10", 4)], [sess(1, "2026-01-05")], "2026-03-01");
+check("sessie vóór aankoop is niet gedekt", beforePurchase.uncoveredSessionIds, [1]);
+check("pakket blijft vol", beforePurchase.available, 10);
+
+check("signaal bij weinig credits", signalFor(buildLedger([pack(1, "2026-07-01", 4, 2)], [], "2026-07-05"), "2026-07-04", 30), "laag");
+check("signaal bij lege teller", signalFor(buildLedger([], [], "2026-07-05"), undefined, 30), "op");
+
+// ---------- thresholds ----------
+console.log("\nthresholds");
+const s = DEFAULT_SETTINGS;
+check("btw plafond = grens - marge", vatStatus(0, s).limit, 23500);
+check("btw ok onder 80%", vatStatus(10000, s).level, "ok");
+check("btw waarschuwing vanaf 80%", vatStatus(18800, s).level, "waarschuwing");
+check("btw kritiek vanaf 95%", vatStatus(22325, s).level, "kritiek");
+check("btw overschreden", vatStatus(23500, s).level, "overschreden");
+check("btw resterende ruimte", vatStatus(20000, s).remaining, 3500);
+
+check("netto winst = omzet - kosten", socialStatus(20000, s).netProfit, 15000);
+check("vrijstelling onder grens", socialStatus(6000, s).exempt, true);
+check("geen vrijstelling erboven", socialStatus(20000, s).exempt, false);
+check("netto winst nooit negatief", socialStatus(1000, s).netProfit, 0);
+
+// ---------- invoicing ----------
+console.log("\ninvoicing");
+check("factuurnummer telt op", nextNumber("2026-001"), "2026-002");
+check("factuurnummer rolt over", nextNumber("2026-009"), "2026-010");
+check("factuurnummer behoudt breedte", nextNumber("2026-099"), "2026-100");
+check("factuurnummer zonder cijfers", nextNumber("FACTUUR"), "FACTUUR-2");
+
+// ---------- sanity on the real numbers ----------
+console.log("\nscenario: een jaar zoals Yens het draait");
+// 9 clients each buying two Privéruimte solo packs over the year.
+const txs: Transaction[] = [];
+for (let c = 0; c < 9; c++) {
+  txs.push({ ...pack(c * 2 + 1, "2026-02-01", 4), clientId: c + 1 });
+  txs.push({ ...pack(c * 2 + 2, "2026-07-01", 4), clientId: c + 1 });
+}
+const revenue = txs.reduce((sum, t) => sum + t.amount, 0);
+check("omzet 18 pakketten", revenue, 11700);
+check("blijft onder btw-plafond", vatStatus(revenue, s).level, "ok");
+check("boven sociale vrijstelling", socialStatus(revenue, s).exempt, false);
+// The threshold that would actually bite: how many packs before the VAT ceiling?
+const packsToLimit = Math.floor(23500 / 650);
+check("pakketten tot btw-plafond", packsToLimit, 36);
+
+console.log(`\n${failures === 0 ? "Alles in orde." : `${failures} test(s) gefaald.`}`);
+console.log(`(gedraaid op ${toIso(new Date())})`);
+process.exit(failures === 0 ? 0 : 1);

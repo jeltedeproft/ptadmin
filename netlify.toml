@@ -1,0 +1,21 @@
+# Alternative to GitHub Pages: Netlify or Cloudflare Pages (both read this
+# build config). Hosted at a domain root, so no BASE_PATH override is needed.
+
+[build]
+  command = "npm run build"
+  publish = "dist"
+
+[build.environment]
+  NODE_VERSION = "22"
+
+# Single-page app: every route falls back to index.html.
+[[redirects]]
+  from = "/*"
+  to = "/index.html"
+  status = 200
+
+# The service worker must never be served from cache, or updates never land.
+[[headers]]
+  for = "/sw.js"
+  [headers.values]
+    Cache-Control = "no-cache"

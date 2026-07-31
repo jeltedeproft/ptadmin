@@ -1,0 +1,11 @@
+node_modules
+dist
+dist-ssr
+tsconfig.tsbuildinfo
+.smoke.mjs
+.import.mjs
+*.local
+.DS_Store
+
+# Contains real client contact details — never commit.
+data/
