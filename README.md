@@ -37,9 +37,22 @@ aanpassen doe je rechtstreeks in de JSON.
 De app is een statische site — er is geen server nodig, want alle gegevens
 blijven op het toestel. Hosting hoeft dus niets te kosten.
 
-**GitHub Pages** — `.github/workflows/deploy.yml` bouwt en publiceert bij elke
-push naar `main`. Eenmalig instellen: repo → Settings → Pages → Source =
-GitHub Actions. De site komt op `https://<gebruiker>.github.io/<repo>/`.
+Staat live op **https://jeltedeproft.github.io/ptadmin/**
+
+**Nu: handmatig, met `npm run deploy`.** Dat bouwt en duwt `dist/` naar de
+`gh-pages`-branch. Draai het na elke wijziging die online moet.
+
+**Straks: automatisch.** `.github/workflows/deploy.yml` staat klaar maar is nog
+niet gepusht — de lokale `gh`-token mist de `workflow`-scope. Eenmalig:
+
+```bash
+gh auth refresh -s workflow      # opent de browser
+git add .github && git commit -m "Voeg deployworkflow toe" && git push
+```
+
+Daarna in de repo: Settings → Pages → Source = **GitHub Actions**. Vanaf dan
+bouwt en publiceert elke push naar `main` vanzelf, inclusief `npm test`.
+
 Let op: gratis GitHub Pages werkt alleen vanuit een **publieke** repo.
 
 **Netlify of Cloudflare Pages** — `netlify.toml` bevat de buildconfiguratie.
