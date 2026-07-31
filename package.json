@@ -9,8 +9,7 @@
     "preview": "vite preview",
     "typecheck": "tsc -b --noEmit",
     "test": "esbuild scripts/smoke.ts --bundle --platform=node --format=esm --outfile=.smoke.mjs --log-level=warning && node .smoke.mjs",
-    "icons": "node scripts/make-icons.mjs",
-    "deploy": "node scripts/deploy.mjs"
+    "icons": "node scripts/make-icons.mjs"
   },
   "dependencies": {
     "dexie": "^4.0.11",
