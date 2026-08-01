@@ -15,6 +15,7 @@ import { socialStatus, vatStatus } from "../src/domain/thresholds";
 import { nextNumber } from "../src/domain/invoicing";
 import { buildMonthlySeries, buildReport } from "../src/domain/reporting";
 import { barPath, niceMax, ticks } from "../src/components/charts";
+import { toCsv } from "../src/domain/csv";
 import { DEFAULT_PRICES, DEFAULT_SETTINGS } from "../src/db/seed";
 import type { Client, InformEntry, Session, Transaction } from "../src/db/schema";
 import type { ClientOverview } from "../src/hooks/useData";
@@ -356,6 +357,18 @@ console.log("\ngrafieken");
   check("lege maand blijft nul", series[0].total, 0);
   check("sessies per maand", [series[2].sessions, series[3].sessions], [2, 1]);
   check("actieve klanten telt unieke klanten", series[2].activeClients, 1);
+}
+
+// ---------- csv ----------
+console.log("\ncsv-export");
+{
+  check("kolommen met puntkomma", toCsv(["a", "b"], [[1, 2]]), "a;b\r\n1;2");
+  check("decimale komma voor Excel", toCsv(["bedrag"], [[1080.5]]), "bedrag\r\n1080,5");
+  // A name containing the separator must not split into two columns.
+  check('puntkomma in tekst wordt gequote', toCsv(["naam"], [["De Proft; Yens"]]), 'naam\r\n"De Proft; Yens"');
+  check("aanhalingsteken wordt verdubbeld", toCsv(["naam"], [['Jan "JD"']]), 'naam\r\n"Jan ""JD"""');
+  check("nieuwe regel blijft binnen één cel", toCsv(["adres"], [["Straat 1\n2000 Stad"]]), 'adres\r\n"Straat 1\n2000 Stad"');
+  check("lege waarde blijft leeg", toCsv(["a", "b"], [[undefined, "x"]]), "a;b\r\n;x");
 }
 
 console.log(`\n${failures === 0 ? "Alles in orde." : `${failures} test(s) gefaald.`}`);

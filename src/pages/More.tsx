@@ -1,6 +1,7 @@
 import { useRef, useState } from "react";
 import { Link } from "react-router-dom";
 import { exportBackup, importBackup } from "../domain/backup";
+import { EXPORTS, exportCsv } from "../domain/csv";
 
 const LINKS = [
   { to: "/verkopen", title: "Verkopen", sub: "Pakketten en losse sessies registreren" },
@@ -39,6 +40,22 @@ export default function More() {
             </div>
             <span className="muted">›</span>
           </Link>
+        ))}
+      </div>
+
+      <h2>Exporteren</h2>
+      <p className="sub">
+        Semicolon-gescheiden CSV, opent rechtstreeks in Excel met de kolommen al gesplitst.
+      </p>
+      <div className="list">
+        {EXPORTS.map((e) => (
+          <button key={e.kind} onClick={() => exportCsv(e.kind)}>
+            <div>
+              <div className="item-title">{e.label}</div>
+              <div className="item-sub">{e.hint}</div>
+            </div>
+            <span className="muted">CSV ↓</span>
+          </button>
         ))}
       </div>
 
