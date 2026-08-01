@@ -158,6 +158,56 @@ h2 {
   margin: 28px 0 10px;
 }
 
+h3 {
+  font-size: 13px;
+  font-weight: 600;
+  color: var(--muted);
+  margin: 18px 0 8px;
+}
+
+/* Urgent actions carry more weight than the ones that merely loom. */
+.action-now {
+  font-size: 15px;
+  padding: 13px 16px;
+}
+
+.action-soon {
+  font-size: 13px;
+  padding: 9px 14px;
+  opacity: 0.85;
+}
+
+.action-head {
+  margin-top: 16px;
+}
+
+details.more {
+  margin-top: 22px;
+  border-top: 1px solid var(--border);
+  padding-top: 6px;
+}
+
+details.more > summary {
+  cursor: pointer;
+  padding: 10px 2px;
+  font-size: 13.5px;
+  font-weight: 600;
+  color: var(--muted);
+  list-style: none;
+}
+
+details.more > summary::after {
+  content: " ▾";
+}
+
+details.more[open] > summary::after {
+  content: " ▴";
+}
+
+details.more > summary::-webkit-details-marker {
+  display: none;
+}
+
 .sub {
   color: var(--muted);
   font-size: 13px;
@@ -209,7 +259,8 @@ h2 {
   gap: 10px;
 }
 
-.kpi .label {
+.kpi .label,
+.hero .label {
   font-size: 12px;
   color: var(--muted);
   text-transform: uppercase;
@@ -217,14 +268,68 @@ h2 {
 }
 
 .kpi .value {
-  font-size: 25px;
   font-weight: 700;
   letter-spacing: -0.02em;
   margin-top: 4px;
+  /* Proportional figures: tabular-nums makes big numbers look loose. */
 }
 
-.kpi .value.sm {
-  font-size: 19px;
+.kpi-lg .value {
+  font-size: 30px;
+}
+.kpi-md .value {
+  font-size: 22px;
+}
+.kpi-sm .value {
+  font-size: 17px;
+}
+.kpi-sm {
+  padding: 11px 13px;
+}
+
+.kpi-sub {
+  font-size: 12px;
+  color: var(--muted);
+  margin-top: 3px;
+}
+
+/* ---------- hero figure ---------- */
+
+.hero {
+  padding: 20px 22px;
+}
+
+.hero-value {
+  font-size: 52px;
+  font-weight: 700;
+  letter-spacing: -0.035em;
+  line-height: 1.05;
+  margin: 6px 0 8px;
+}
+
+@media (max-width: 420px) {
+  .hero-value {
+    font-size: 42px;
+  }
+}
+
+.hero-foot {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 12px;
+  font-size: 13px;
+}
+
+.delta {
+  font-weight: 600;
+  color: var(--muted);
+}
+.delta.up {
+  color: var(--ok);
+}
+.delta.down {
+  color: var(--crit);
 }
 
 /* ---------- meters ---------- */

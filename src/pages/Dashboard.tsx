@@ -1,6 +1,6 @@
 import { useMemo, useState, type ReactNode } from "react";
 import { Link } from "react-router-dom";
-import { Badge, Card, Empty, Kpi, Meter } from "../components/ui";
+import { Badge, Card, Empty, Hero, Kpi, Meter } from "../components/ui";
 import {
   useInform,
   useInvoices,
@@ -87,46 +87,33 @@ export default function Dashboard() {
         </Link>
       )}
 
-      <div className="grid">
-        <Kpi label={`Omzet ${formatMonth(month)}`} value={formatEuro(revenue.month)} />
-        <Kpi label={`Omzet ${report.year}`} value={formatEuro(revenue.year)} />
-        <Kpi label="Openstaand" value={formatEuro(report.outstanding)} />
-        <Kpi label="Actieve klanten" value={clients.active} />
-        <Kpi label="Sessies deze week" value={sess.week} />
-        <Kpi label="Ruimte tot btw-grens" value={formatEuro(Math.max(0, vat.remaining))} small />
+      {/* Tier 1 — the one number that answers "hoe sta ik ervoor". */}
+      <Hero
+        label={`Omzet ${formatMonth(month)}`}
+        value={formatEuro(revenue.month)}
+        delta={deltaOf(revenue.month, revenue.previousMonth)}
+        context={`${formatEuro(revenue.year)} in ${report.year}`}
+      />
+
+      {/* Tier 2 — the handful he acts on. */}
+      <div className="grid" style={{ marginTop: 10 }}>
+        <Kpi
+          label="Openstaand"
+          value={formatEuro(report.outstanding)}
+          size="lg"
+          sub={report.overdueInvoices.length > 0 ? `${report.overdueInvoices.length} te laat` : undefined}
+        />
+        <Kpi label="Sessies deze week" value={sess.week} size="lg" />
+        <Kpi
+          label="Actieve klanten"
+          value={clients.active}
+          size="lg"
+          sub={clients.newInMonth.length > 0 ? `+${clients.newInMonth.length} deze maand` : undefined}
+        />
       </div>
 
-      <h2>Business</h2>
-      <div className="grid">
-        <Kpi label="Omzet eigen klanten" value={formatEuro(revenue.own)} small />
-        <Kpi label="Omzet IN FORM" value={formatEuro(revenue.inform)} small />
-        <Kpi label={`Ontvangen ${formatMonth(month)}`} value={formatEuro(revenue.receivedMonth)} small />
-        <Kpi label="Gemiddelde maandomzet" value={formatEuro(revenue.averageMonth)} small />
-        <Kpi label="Geschatte jaaromzet" value={formatEuro(revenue.projectedYear)} small />
-      </div>
-
-      <h2>Klanten</h2>
-      <div className="grid">
-        <Kpi label="Actief" value={clients.active} />
-        <Kpi label="Gepauzeerd" value={clients.paused} />
-        <Kpi label="Stopgezet" value={clients.stopped} />
-        <Kpi label={`Nieuw in ${formatMonth(month)}`} value={clients.newInMonth.length} />
-        <Kpi label="Evaluaties deze maand" value={clients.evaluationsInMonth.length} />
-        <Kpi label="Weinig credits" value={clients.lowCredits.length} />
-      </div>
-
-      <h2>Trainingen</h2>
-      <div className="grid">
-        <Kpi label="Sessies deze week" value={sess.week} />
-        <Kpi label={`Sessies ${formatMonth(month)}`} value={sess.month} />
-        <Kpi label={`Sessies ${report.year}`} value={sess.year} />
-      </div>
-      {sess.month > 0 && (
-        <Card className="stack" style={{ marginTop: 10 }}>
-          <Split label="Per type" counts={sess.byType} />
-          <Split label="Per locatie" counts={sess.byLocation} />
-        </Card>
-      )}
+      <h2>Actiepunten</h2>
+      <Actions report={report} settings={settings} />
 
       <h2>Grensbewaking {report.year}</h2>
       <div className="grid" style={{ gridTemplateColumns: "repeat(auto-fit, minmax(260px, 1fr))" }}>
@@ -169,7 +156,42 @@ export default function Dashboard() {
         </Card>
       </div>
 
-      <h2>Grafieken {report.year}</h2>
+      {/* Tier 3 — supporting detail, folded away so it stops competing. */}
+      <details className="more">
+        <summary>Alle cijfers</summary>
+
+        <h3>Business</h3>
+        <div className="grid">
+          <Kpi label="Omzet eigen klanten" value={formatEuro(revenue.own)} size="sm" />
+          <Kpi label="Omzet IN FORM" value={formatEuro(revenue.inform)} size="sm" />
+          <Kpi label={`Ontvangen ${formatMonth(month)}`} value={formatEuro(revenue.receivedMonth)} size="sm" />
+          <Kpi label="Gemiddelde maandomzet" value={formatEuro(revenue.averageMonth)} size="sm" />
+          <Kpi label="Geschatte jaaromzet" value={formatEuro(revenue.projectedYear)} size="sm" />
+        </div>
+
+        <h3>Klanten</h3>
+        <div className="grid">
+          <Kpi label="Gepauzeerd" value={clients.paused} size="sm" />
+          <Kpi label="Stopgezet" value={clients.stopped} size="sm" />
+          <Kpi label={`Nieuw in ${formatMonth(month)}`} value={clients.newInMonth.length} size="sm" />
+          <Kpi label="Evaluaties deze maand" value={clients.evaluationsInMonth.length} size="sm" />
+          <Kpi label="Weinig credits" value={clients.lowCredits.length} size="sm" />
+        </div>
+
+        <h3>Trainingen</h3>
+        <div className="grid">
+          <Kpi label={`Sessies ${formatMonth(month)}`} value={sess.month} size="sm" />
+          <Kpi label={`Sessies ${report.year}`} value={sess.year} size="sm" />
+        </div>
+        {sess.month > 0 && (
+          <Card className="stack" style={{ marginTop: 10 }}>
+            <Split label="Per type" counts={sess.byType} />
+            <Split label="Per locatie" counts={sess.byLocation} />
+          </Card>
+        )}
+      </details>
+
+      <h2 id="grafieken">Grafieken {report.year}</h2>
       <StackedColumns
         title="Omzet per maand"
         subtitle="Eigen klanten tegenover IN FORM"
@@ -191,9 +213,6 @@ export default function Dashboard() {
         valueName="Klanten"
         format={whole}
       />
-
-      <h2>Actiepunten</h2>
-      <Actions report={report} settings={settings} />
     </>
   );
 }
@@ -203,6 +222,17 @@ const linkAlert = {
   color: "inherit",
   display: "block",
 } as const;
+
+/** Month-on-month change for the hero figure. */
+function deltaOf(now: number, before: number): { text: string; good: boolean | null } | undefined {
+  if (before === 0) return undefined;
+  const pct = Math.round(((now - before) / before) * 100);
+  if (pct === 0) return { text: "gelijk aan vorige maand", good: null };
+  return {
+    text: `${pct > 0 ? "+" : ""}${pct}% tegenover vorige maand`,
+    good: pct > 0,
+  };
+}
 
 function Split({ label, counts }: { label: string; counts: Record<string, number | undefined> }) {
   const entries = Object.entries(counts).filter(([, n]) => n);
@@ -215,12 +245,14 @@ function Split({ label, counts }: { label: string; counts: Record<string, number
   );
 }
 
-function Action({ to, crit, children }: { to: string; crit?: boolean; children: ReactNode }) {
-  return (
-    <Link to={to} className={`alert${crit ? " crit" : ""}`} style={linkAlert}>
-      {children}
-    </Link>
-  );
+/** Urgency drives size: "nu" reads as a headline, "binnenkort" as a footnote. */
+type Urgency = "nu" | "binnenkort";
+
+interface ActionItem {
+  key: string;
+  to: string;
+  urgency: Urgency;
+  node: ReactNode;
 }
 
 function Actions({
@@ -232,87 +264,118 @@ function Actions({
 }) {
   const { clients, unpaidTransactions, uninvoicedInform, overdueInvoices, unsentInvoices, leadsDue } =
     report;
-  const items: ReactNode[] = [];
+  const items: ActionItem[] = [];
+  const add = (key: string, to: string, urgency: Urgency, node: ReactNode) =>
+    items.push({ key, to, urgency, node });
 
-  for (const l of leadsDue) {
-    items.push(
-      <Action key={`lead-${l.id}`} to="/leads">
-        <strong>{l.name}</strong> — lead opvolgen ({l.status.toLowerCase()})
-      </Action>,
-    );
-  }
-
+  // Money already late — the top of the list, always.
   for (const i of overdueInvoices) {
-    items.push(
-      <Action key={`inv-${i.id}`} to="/facturen" crit>
+    add(`inv-${i.id}`, "/facturen", "nu", (
+      <>
         <strong>Factuur {i.number} is te laat</strong> — {formatEuro(i.amount)}, verviel{" "}
         {formatDateShort(i.dueDate)}
-      </Action>,
-    );
+      </>
+    ));
   }
   if (unpaidTransactions.length > 0) {
-    items.push(
-      <Action key="unpaid" to="/verkopen" crit>
+    add("unpaid", "/verkopen", "nu", (
+      <>
         <strong>
           {unpaidTransactions.length} onbetaalde verkoop{unpaidTransactions.length === 1 ? "" : "en"}
         </strong>{" "}
         — {formatEuro(unpaidTransactions.reduce((s, t) => s + t.amount, 0))} openstaand
-      </Action>,
-    );
+      </>
+    ));
   }
   for (const o of clients.needsPack) {
-    items.push(
-      <Action key={`pack-${o.client.id}`} to={`/klanten/${o.client.id}`} crit>
+    add(`pack-${o.client.id}`, `/klanten/${o.client.id}`, "nu", (
+      <>
         <strong>{o.client.name}</strong> — nieuw pakket nodig
-      </Action>,
-    );
+      </>
+    ));
   }
+  for (const l of leadsDue) {
+    add(`lead-${l.id}`, "/leads", "nu", (
+      <>
+        <strong>{l.name}</strong> — lead opvolgen ({l.status.toLowerCase()})
+      </>
+    ));
+  }
+
   for (const o of clients.expiringPacks) {
-    items.push(
-      <Action key={`exp-${o.client.id}`} to={`/klanten/${o.client.id}`}>
+    add(`exp-${o.client.id}`, `/klanten/${o.client.id}`, "binnenkort", (
+      <>
         <strong>{o.client.name}</strong> — {o.ledger.available} credits vervallen op{" "}
         {formatDateShort(o.ledger.nextExpiry)}
-      </Action>,
-    );
+      </>
+    ));
   }
   for (const o of clients.lowCredits) {
-    items.push(
-      <Action key={`low-${o.client.id}`} to={`/klanten/${o.client.id}`}>
+    add(`low-${o.client.id}`, `/klanten/${o.client.id}`, "binnenkort", (
+      <>
         <strong>{o.client.name}</strong> — nog {o.ledger.available} credit
         {o.ledger.available === 1 ? "" : "s"}
-      </Action>,
-    );
+      </>
+    ));
   }
   for (const o of clients.inactive) {
-    items.push(
-      <Action key={`inact-${o.client.id}`} to={`/klanten/${o.client.id}`}>
+    add(`inact-${o.client.id}`, `/klanten/${o.client.id}`, "binnenkort", (
+      <>
         <strong>{o.client.name}</strong> — al {settings.inactiveDays}+ dagen niet getraind
-      </Action>,
-    );
+      </>
+    ));
   }
   for (const o of clients.evaluationsSoon) {
-    items.push(
-      <Action key={`ev-${o.client.id}`} to={`/klanten/${o.client.id}`}>
+    add(`ev-${o.client.id}`, `/klanten/${o.client.id}`, "binnenkort", (
+      <>
         <strong>{o.client.name}</strong> — evaluatie op {formatDateShort(o.client.nextEvaluation)}
-      </Action>,
-    );
+      </>
+    ));
   }
   if (uninvoicedInform.length > 0) {
-    items.push(
-      <Action key="inform" to="/inform">
+    add("inform", "/inform", "binnenkort", (
+      <>
         <strong>{uninvoicedInform.length} IN FORM-uren nog niet gefactureerd</strong> —{" "}
         {formatEuro(uninvoicedInform.reduce((s, e) => s + e.amount, 0))}
-      </Action>,
-    );
+      </>
+    ));
   }
   for (const i of unsentInvoices) {
-    items.push(
-      <Action key={`send-${i.id}`} to="/facturen">
-        <strong>Factuur {i.number} is gemaakt maar nog niet verstuurd</strong>
-      </Action>,
-    );
+    add(`send-${i.id}`, "/facturen", "binnenkort", (
+      <>
+        <strong>Factuur {i.number}</strong> is gemaakt maar nog niet verstuurd
+      </>
+    ));
   }
 
   if (items.length === 0) return <Empty>Niets dat je aandacht vraagt. 🎉</Empty>;
-  return <div className="stack">{items}</div>;
+
+  const now = items.filter((i) => i.urgency === "nu");
+  const soon = items.filter((i) => i.urgency === "binnenkort");
+
+  return (
+    <>
+      {now.length > 0 && (
+        <div className="stack">
+          {now.map((i) => (
+            <Link key={i.key} to={i.to} className="alert crit action-now" style={linkAlert}>
+              {i.node}
+            </Link>
+          ))}
+        </div>
+      )}
+      {soon.length > 0 && (
+        <>
+          <h3 className="action-head">Binnenkort</h3>
+          <div className="stack">
+            {soon.map((i) => (
+              <Link key={i.key} to={i.to} className="alert action-soon" style={linkAlert}>
+                {i.node}
+              </Link>
+            ))}
+          </div>
+        </>
+      )}
+    </>
+  );
 }

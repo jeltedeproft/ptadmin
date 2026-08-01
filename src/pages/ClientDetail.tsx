@@ -68,8 +68,8 @@ export default function ClientDetail() {
       <div className="grid">
         <Kpi label="Credits over" value={ledger.available} />
         <Kpi label="Sessies gedaan" value={sessions.filter((s) => isChargeable(s.status)).length} />
-        <Kpi label="Vervalt op" value={formatDateShort(ledger.nextExpiry)} small />
-        <Kpi label="Laatste sessie" value={formatDateShort(lastSession)} small />
+        <Kpi label="Vervalt op" value={formatDateShort(ledger.nextExpiry)} size="sm" />
+        <Kpi label="Laatste sessie" value={formatDateShort(lastSession)} size="sm" />
       </div>
 
       {ledger.looseUnused > 0 && (

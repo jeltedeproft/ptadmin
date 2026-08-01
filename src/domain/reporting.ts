@@ -17,6 +17,7 @@ import {
   daysBetween,
   monthRange,
   monthsElapsed,
+  shiftMonthKey,
   startOfWeek,
   today,
   yearOfMonthKey,
@@ -46,6 +47,8 @@ export interface DashboardReport {
     receivedMonth: number;
     averageMonth: number;
     projectedYear: number;
+    /** The month before the selected one, for the headline delta. */
+    previousMonth: number;
   };
   outstanding: number;
   clients: {
@@ -159,6 +162,17 @@ export function buildReport(
       (i) => i.amount,
     );
 
+  const prev = monthRange(shiftMonthKey(monthKey, -1));
+  const previousMonth =
+    sum(
+      transactions.filter((t) => inRange(t.date, prev.start, prev.end)),
+      (t) => t.amount,
+    ) +
+    sum(
+      inform.filter((e) => inRange(e.date, prev.start, prev.end)),
+      (e) => e.amount,
+    );
+
   const elapsed = monthsElapsed(year, asOf);
   const averageMonth = elapsed > 0 ? revenueYear / elapsed : 0;
   const projectedYear = elapsed > 0 ? averageMonth * 12 : revenueYear;
@@ -189,6 +203,7 @@ export function buildReport(
       receivedMonth,
       averageMonth,
       projectedYear,
+      previousMonth,
     },
     outstanding,
     clients: {

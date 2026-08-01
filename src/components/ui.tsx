@@ -16,11 +16,57 @@ export function Card({
   );
 }
 
-export function Kpi({ label, value, small }: { label: string; value: ReactNode; small?: boolean }) {
+/**
+ * Stat tile. `size` sets the visual rank — the dashboard reads top-down, so
+ * weight has to fall off as importance does.
+ */
+export function Kpi({
+  label,
+  value,
+  size = "md",
+  sub,
+}: {
+  label: string;
+  value: ReactNode;
+  size?: "lg" | "md" | "sm";
+  sub?: ReactNode;
+}) {
   return (
-    <div className="card kpi">
+    <div className={`card kpi kpi-${size}`}>
       <div className="label">{label}</div>
-      <div className={`value${small ? " sm" : ""}`}>{value}</div>
+      <div className="value">{value}</div>
+      {sub && <div className="kpi-sub">{sub}</div>}
+    </div>
+  );
+}
+
+/**
+ * The one number the dashboard leads with. Exactly one per view — a second
+ * hero is just two competing headlines.
+ */
+export function Hero({
+  label,
+  value,
+  delta,
+  context,
+}: {
+  label: string;
+  value: string;
+  delta?: { text: string; good: boolean | null };
+  context?: ReactNode;
+}) {
+  return (
+    <div className="card hero">
+      <div className="label">{label}</div>
+      <div className="hero-value">{value}</div>
+      <div className="hero-foot">
+        {delta && (
+          <span className={`delta${delta.good === null ? "" : delta.good ? " up" : " down"}`}>
+            {delta.text}
+          </span>
+        )}
+        {context && <span className="muted">{context}</span>}
+      </div>
     </div>
   );
 }
