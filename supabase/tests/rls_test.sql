@@ -37,6 +37,9 @@ end;
 $$;
 
 -- ------------------------------------------------------------------ fixture
+-- Inserts straight into auth.users, which only works as the postgres role in
+-- the SQL editor. If this block fails on a missing column, Supabase has
+-- changed that table's shape — send me the error rather than working around it.
 do $$
 declare
   coach_a uuid := gen_random_uuid();
@@ -168,10 +171,18 @@ begin
     (select count(*) from public.clients where name = 'Gehackt'), 0);
 
   -- Privilege escalation: a client must not be able to promote themselves.
-  update public.profiles set role = 'coach' where id = a;
+  -- The WITH CHECK on profiles_self_update pins the role column, so this
+  -- raises rather than quietly updating nothing.
+  begin
+    update public.profiles set role = 'coach' where id = a;
+    blocked := false;
+  exception when insufficient_privilege or check_violation then blocked := true;
+  end;
+
   perform pg_temp.as_admin();
   perform pg_temp.expect('klant kan zichzelf geen coach maken',
     (select count(*) from public.profiles where id = a and role = 'coach'), 0);
+  if not blocked then raise notice 'let op: rolwijziging werd niet geweigerd, enkel genegeerd'; end if;
 end $$;
 
 -- ------------------------------------------------------------ anonymous view

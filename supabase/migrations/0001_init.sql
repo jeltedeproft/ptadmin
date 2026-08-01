@@ -43,17 +43,16 @@ as $$
   );
 $$;
 
-create or replace function public.owns_client(cid bigint)
-returns boolean
+-- Own role, read without tripping profiles' own RLS. Used by the update policy
+-- below to pin the role column: a client must not be able to promote themselves.
+create or replace function public.my_role()
+returns text
 language sql
 stable
 security definer
 set search_path = public
 as $$
-  select exists (
-    select 1 from public.clients
-    where id = cid and auth_user_id = auth.uid()
-  );
+  select role from public.profiles where id = auth.uid();
 $$;
 
 -- ------------------------------------------------------------------ clients
@@ -83,6 +82,21 @@ create table public.clients (
 
 create index on public.clients (coach_id);
 create index on public.clients (auth_user_id);
+
+-- Defined after public.clients: a `language sql` body is parsed and validated
+-- at creation time, so the table it reads has to exist already.
+create or replace function public.owns_client(cid bigint)
+returns boolean
+language sql
+stable
+security definer
+set search_path = public
+as $$
+  select exists (
+    select 1 from public.clients
+    where id = cid and auth_user_id = auth.uid()
+  );
+$$;
 
 -- ------------------------------------------------------------------- prices
 -- Versioned: base_code is the stable product, code one priced period of it.
@@ -292,9 +306,11 @@ alter table public.settings        enable row level security;
 create policy profiles_self_read on public.profiles
   for select using (id = auth.uid());
 
+-- my_role() is SECURITY DEFINER, so this comparison does not re-enter profiles'
+-- own RLS. Reading the role through a plain subquery here would.
 create policy profiles_self_update on public.profiles
   for update using (id = auth.uid())
-  with check (id = auth.uid() and role = (select role from public.profiles where id = auth.uid()));
+  with check (id = auth.uid() and role = public.my_role());
 
 -- clients: the coach owns them; a client may read the single row that is them.
 create policy clients_coach_all on public.clients
