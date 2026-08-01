@@ -15,7 +15,11 @@ import Planning from "./pages/Planning";
 import Programmes from "./pages/Programmes";
 import Evaluations from "./pages/Evaluations";
 import LockGate from "./components/LockScreen";
-import { NAV, PORTALS, portalOf, portalsFor, type Portal } from "./portals";
+import Login from "./pages/Login";
+import ClientHome from "./pages/ClientHome";
+import { AuthProvider, useAuth } from "./auth/AuthProvider";
+import { hasBackend } from "./db/supabase";
+import { NAV, PORTALS, portalOf, portalsFor, type Portal, type Role } from "./portals";
 
 function Icon({ d }: { d: string }) {
   return (
@@ -27,21 +31,45 @@ function Icon({ d }: { d: string }) {
 
 export default function App() {
   return (
+    <AuthProvider>
+      <Gate />
+    </AuthProvider>
+  );
+}
+
+/**
+ * Order matters: the account decides *who* you are, the device code only keeps
+ * a stray pair of hands out. Without a backend configured the app falls back to
+ * its device-local behaviour and skips sign-in entirely.
+ */
+function Gate() {
+  const { loading, session, role } = useAuth();
+
+  if (!hasBackend) {
+    return (
+      <LockGate>
+        <Shell role="coach" />
+      </LockGate>
+    );
+  }
+  if (loading) return <div className="lock" />;
+  if (!session) return <Login />;
+
+  return (
     <LockGate>
-      <Shell />
+      <Shell role={role ?? "client"} />
     </LockGate>
   );
 }
 
-function Shell() {
+function Shell({ role }: { role: Role }) {
   const location = useLocation();
   const navigate = useNavigate();
-
-  // Until Supabase auth lands, everyone on this device is the coach — it is
-  // his own phone. The client portal is reachable for preview.
-  const role = "coach" as const;
   const available = portalsFor(role);
-  const portal = portalOf(location.pathname);
+  const home = PORTALS[available[0]].home;
+  // A client landing on a coach URL is sent home rather than shown empty screens.
+  const requested = portalOf(location.pathname);
+  const portal = available.includes(requested) ? requested : available[0];
   const items = NAV[portal];
 
   return (
@@ -71,6 +99,12 @@ function Shell() {
         )}
 
         <Routes>
+          {/* Client — read-only, their own data only. The server enforces that;
+              this routing only keeps the UI coherent. */}
+          <Route path="/mij" element={<ClientHome />} />
+          <Route path="/mij/sessies" element={<ClientHome view="sessies" />} />
+          <Route path="/mij/pakketten" element={<ClientHome view="pakketten" />} />
+
           {/* Coach — the training relationship */}
           <Route path="/coach" element={<Clients />} />
           <Route path="/coach/klanten/:id" element={<ClientDetail />} />
@@ -91,7 +125,7 @@ function Shell() {
           <Route path="/business/meer" element={<More />} />
 
           {/* Old links from before the split. */}
-          <Route path="/" element={<Navigate to="/business" replace />} />
+          <Route path="/" element={<Navigate to={home} replace />} />
           <Route path="/klanten" element={<Navigate to="/coach" replace />} />
           <Route path="/klanten/:id" element={<LegacyClient />} />
           <Route path="/sessies" element={<Navigate to="/business/sessies" replace />} />
@@ -102,7 +136,7 @@ function Shell() {
           <Route path="/instellingen" element={<Navigate to="/business/instellingen" replace />} />
           <Route path="/leads" element={<Navigate to="/coach/opvolging" replace />} />
           <Route path="/meer" element={<Navigate to="/business/meer" replace />} />
-          <Route path="*" element={<Navigate to="/business" replace />} />
+          <Route path="*" element={<Navigate to={home} replace />} />
         </Routes>
       </main>
     </div>

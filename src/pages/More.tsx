@@ -2,6 +2,33 @@ import { useRef, useState } from "react";
 import { Link } from "react-router-dom";
 import { exportBackup, importBackup } from "../domain/backup";
 import { EXPORTS, exportCsv } from "../domain/csv";
+import { useAuth } from "../auth/AuthProvider";
+import { hasBackend } from "../db/supabase";
+
+function Account() {
+  const { session, role, offline, signOut } = useAuth();
+  if (!hasBackend || !session) return null;
+
+  return (
+    <>
+      <h2>Account</h2>
+      <div className="list">
+        <div>
+          <div>
+            <div className="item-title">{session.user.email}</div>
+            <div className="item-sub">
+              Aangemeld als {role === "coach" ? "coach" : "klant"}
+              {offline && " · offline, rol uit het geheugen"}
+            </div>
+          </div>
+        </div>
+      </div>
+      <button className="btn-block" style={{ marginTop: 10 }} onClick={signOut}>
+        Afmelden
+      </button>
+    </>
+  );
+}
 
 const LINKS = [
   { to: "/coach/opvolging", title: "Leads", sub: "Potentiële klanten opvolgen" },
@@ -85,6 +112,8 @@ export default function More() {
         />
         {busy && <p className="sub">{busy}</p>}
       </div>
+
+      <Account />
 
       <h2>Installeren</h2>
       <p className="sub">

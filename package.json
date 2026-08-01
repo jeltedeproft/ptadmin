@@ -12,6 +12,7 @@
     "icons": "node scripts/make-icons.mjs"
   },
   "dependencies": {
+    "@supabase/supabase-js": "^2.111.0",
     "dexie": "^4.0.11",
     "dexie-react-hooks": "^1.1.7",
     "jspdf": "^2.5.2",
