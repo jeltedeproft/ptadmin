@@ -10,26 +10,26 @@ import type { PriceItem, Settings } from "./schema";
  */
 export const DEFAULT_PRICES: PriceItem[] = [
   // Privéruimte — packs valid 4 months
-  { code: "PR-SOLO-LOS", location: "Privéruimte", sessionType: "Solo", product: "Losse sessie", amount: 70, credits: 1, validityMonths: 0, active: true },
-  { code: "PR-SOLO-10", location: "Privéruimte", sessionType: "Solo", product: "Pakket 10", amount: 650, credits: 10, validityMonths: 4, active: true },
-  { code: "PR-DUO-LOS", location: "Privéruimte", sessionType: "Duo", product: "Losse sessie", amount: 42, credits: 1, validityMonths: 0, active: true },
-  { code: "PR-DUO-10", location: "Privéruimte", sessionType: "Duo", product: "Pakket 10", amount: 400, credits: 10, validityMonths: 4, active: true },
-  { code: "PR-SEMI-LOS", location: "Privéruimte", sessionType: "Semi PT", product: "Losse sessie", amount: 34, credits: 1, validityMonths: 0, active: true },
-  { code: "PR-SEMI-10", location: "Privéruimte", sessionType: "Semi PT", product: "Pakket 10", amount: 320, credits: 10, validityMonths: 4, active: true },
+  { code: "PR-SOLO-LOS", baseCode: "PR-SOLO-LOS", location: "Privéruimte", sessionType: "Solo", product: "Losse sessie", amount: 70, credits: 1, validityMonths: 0, active: true },
+  { code: "PR-SOLO-10", baseCode: "PR-SOLO-10", location: "Privéruimte", sessionType: "Solo", product: "Pakket 10", amount: 650, credits: 10, validityMonths: 4, active: true },
+  { code: "PR-DUO-LOS", baseCode: "PR-DUO-LOS", location: "Privéruimte", sessionType: "Duo", product: "Losse sessie", amount: 42, credits: 1, validityMonths: 0, active: true },
+  { code: "PR-DUO-10", baseCode: "PR-DUO-10", location: "Privéruimte", sessionType: "Duo", product: "Pakket 10", amount: 400, credits: 10, validityMonths: 4, active: true },
+  { code: "PR-SEMI-LOS", baseCode: "PR-SEMI-LOS", location: "Privéruimte", sessionType: "Semi PT", product: "Losse sessie", amount: 34, credits: 1, validityMonths: 0, active: true },
+  { code: "PR-SEMI-10", baseCode: "PR-SEMI-10", location: "Privéruimte", sessionType: "Semi PT", product: "Pakket 10", amount: 320, credits: 10, validityMonths: 4, active: true },
   // Aan huis — packs valid 6 months
-  { code: "AH-SOLO-LOS", location: "Aan huis", sessionType: "Solo", product: "Losse sessie", amount: 80, credits: 1, validityMonths: 0, active: true },
-  { code: "AH-SOLO-10", location: "Aan huis", sessionType: "Solo", product: "Pakket 10", amount: 760, credits: 10, validityMonths: 6, active: true },
-  { code: "AH-DUO-LOS", location: "Aan huis", sessionType: "Duo", product: "Losse sessie", amount: 50, credits: 1, validityMonths: 0, active: true },
-  { code: "AH-DUO-10", location: "Aan huis", sessionType: "Duo", product: "Pakket 10", amount: 460, credits: 10, validityMonths: 6, active: true },
-  { code: "AH-SEMI-LOS", location: "Aan huis", sessionType: "Semi PT", product: "Losse sessie", amount: 40, credits: 1, validityMonths: 0, active: true },
-  { code: "AH-SEMI-10", location: "Aan huis", sessionType: "Semi PT", product: "Pakket 10", amount: 360, credits: 10, validityMonths: 6, active: true },
+  { code: "AH-SOLO-LOS", baseCode: "AH-SOLO-LOS", location: "Aan huis", sessionType: "Solo", product: "Losse sessie", amount: 80, credits: 1, validityMonths: 0, active: true },
+  { code: "AH-SOLO-10", baseCode: "AH-SOLO-10", location: "Aan huis", sessionType: "Solo", product: "Pakket 10", amount: 760, credits: 10, validityMonths: 6, active: true },
+  { code: "AH-DUO-LOS", baseCode: "AH-DUO-LOS", location: "Aan huis", sessionType: "Duo", product: "Losse sessie", amount: 50, credits: 1, validityMonths: 0, active: true },
+  { code: "AH-DUO-10", baseCode: "AH-DUO-10", location: "Aan huis", sessionType: "Duo", product: "Pakket 10", amount: 460, credits: 10, validityMonths: 6, active: true },
+  { code: "AH-SEMI-LOS", baseCode: "AH-SEMI-LOS", location: "Aan huis", sessionType: "Semi PT", product: "Losse sessie", amount: 40, credits: 1, validityMonths: 0, active: true },
+  { code: "AH-SEMI-10", baseCode: "AH-SEMI-10", location: "Aan huis", sessionType: "Semi PT", product: "Pakket 10", amount: 360, credits: 10, validityMonths: 6, active: true },
   // Online — flat €40/uur, packs valid 4 months
-  { code: "ON-SOLO-LOS", location: "Online", sessionType: "Solo", product: "Losse sessie", amount: 40, credits: 1, validityMonths: 0, active: true },
-  { code: "ON-SOLO-10", location: "Online", sessionType: "Solo", product: "Pakket 10", amount: 400, credits: 10, validityMonths: 4, active: true },
-  { code: "ON-DUO-LOS", location: "Online", sessionType: "Duo", product: "Losse sessie", amount: 40, credits: 1, validityMonths: 0, active: true },
-  { code: "ON-DUO-10", location: "Online", sessionType: "Duo", product: "Pakket 10", amount: 400, credits: 10, validityMonths: 4, active: true },
-  { code: "ON-SEMI-LOS", location: "Online", sessionType: "Semi PT", product: "Losse sessie", amount: 40, credits: 1, validityMonths: 0, active: true },
-  { code: "ON-SEMI-10", location: "Online", sessionType: "Semi PT", product: "Pakket 10", amount: 400, credits: 10, validityMonths: 4, active: true },
+  { code: "ON-SOLO-LOS", baseCode: "ON-SOLO-LOS", location: "Online", sessionType: "Solo", product: "Losse sessie", amount: 40, credits: 1, validityMonths: 0, active: true },
+  { code: "ON-SOLO-10", baseCode: "ON-SOLO-10", location: "Online", sessionType: "Solo", product: "Pakket 10", amount: 400, credits: 10, validityMonths: 4, active: true },
+  { code: "ON-DUO-LOS", baseCode: "ON-DUO-LOS", location: "Online", sessionType: "Duo", product: "Losse sessie", amount: 40, credits: 1, validityMonths: 0, active: true },
+  { code: "ON-DUO-10", baseCode: "ON-DUO-10", location: "Online", sessionType: "Duo", product: "Pakket 10", amount: 400, credits: 10, validityMonths: 4, active: true },
+  { code: "ON-SEMI-LOS", baseCode: "ON-SEMI-LOS", location: "Online", sessionType: "Semi PT", product: "Losse sessie", amount: 40, credits: 1, validityMonths: 0, active: true },
+  { code: "ON-SEMI-10", baseCode: "ON-SEMI-10", location: "Online", sessionType: "Semi PT", product: "Pakket 10", amount: 400, credits: 10, validityMonths: 4, active: true },
 ];
 
 /**

@@ -138,9 +138,10 @@ export function TransactionModal({ clientId, onClose }: { clientId?: number; onC
   const [invoiceNeeded, setInvoiceNeeded] = useState(false);
   const [note, setNote] = useState("");
 
+  // Priced as of the purchase date, so a back-dated sale keeps the old tariff.
   const price = useMemo(
-    () => (prices ? findPrice(prices, location, sessionType, product) : undefined),
-    [prices, location, sessionType, product],
+    () => (prices ? findPrice(prices, location, sessionType, product, date) : undefined),
+    [prices, location, sessionType, product, date],
   );
 
   const expiresOn = price && price.validityMonths > 0 ? addMonths(date, price.validityMonths) : undefined;

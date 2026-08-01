@@ -69,15 +69,27 @@ export interface Client {
   note?: string;
 }
 
-/** A row of the PRIJZEN matrix: location × session type × product. */
+/**
+ * A row of the PRIJZEN matrix: location × session type × product.
+ *
+ * Prices are versioned rather than overwritten. `baseCode` is the stable
+ * productcode ("PR-SOLO-10"); `code` identifies one priced period of it
+ * ("PR-SOLO-10@2027-01-01"). A transaction stores the versioned `code`, so a
+ * later price change never rewrites what an old sale cost.
+ */
 export interface PriceItem {
-  code: string; // e.g. "PR-SOLO-10"
+  code: string;
+  baseCode: string;
   location: Location;
   sessionType: PricedSessionType;
   product: Product;
   amount: number;
   credits: number;
   validityMonths: number; // 0 = no expiry (single sessions)
+  /** Inclusive. Absent means "has always applied". */
+  activeFrom?: IsoDate;
+  /** Inclusive. Absent means "still applies". */
+  activeUntil?: IsoDate;
   active: boolean;
   note?: string;
 }

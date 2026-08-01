@@ -10,7 +10,7 @@ import {
   startOfWeek,
   toIso,
 } from "../src/domain/dates";
-import { buildProductCode, findPrice } from "../src/domain/pricing";
+import { buildProductCode, findPrice, priceHistory, repriceItem } from "../src/domain/pricing";
 import { socialStatus, vatStatus } from "../src/domain/thresholds";
 import { nextNumber } from "../src/domain/invoicing";
 import { buildReport } from "../src/domain/reporting";
@@ -61,6 +61,33 @@ check("online pakket kost 10x40", findPrice(DEFAULT_PRICES, "Online", "Duo", "Pa
 check("elke locatie/type/product heeft een prijs", DEFAULT_PRICES.length, 18);
 check("alle SKU's oplosbaar", DEFAULT_PRICES.every((p) => findPrice(DEFAULT_PRICES, p.location, p.sessionType, p.product)?.code === p.code), true);
 check("geen dubbele codes", new Set(DEFAULT_PRICES.map((p) => p.code)).size, DEFAULT_PRICES.length);
+
+// ---------- historische tarieven ----------
+console.log("\nhistorische tarieven");
+{
+  const original = DEFAULT_PRICES.find((p) => p.baseCode === "PR-SOLO-10")!;
+  const { closed, opened } = repriceItem(original, 695, "2027-01-01");
+  const catalogue = [...DEFAULT_PRICES.filter((p) => p.baseCode !== "PR-SOLO-10"), closed, opened];
+
+  check("oude versie loopt tot de dag ervoor", closed.activeUntil, "2026-12-31");
+  check("oude versie is niet meer actief", closed.active, false);
+  check("nieuwe versie krijgt een eigen code", opened.code, "PR-SOLO-10@2027-01-01");
+  check("nieuwe versie deelt de baseCode", opened.baseCode, "PR-SOLO-10");
+  check("nieuwe versie heeft geen einddatum", opened.activeUntil, undefined);
+
+  const before = findPrice(catalogue, "Privéruimte", "Solo", "Pakket 10", "2026-11-01");
+  const after = findPrice(catalogue, "Privéruimte", "Solo", "Pakket 10", "2027-03-01");
+  const onSwitch = findPrice(catalogue, "Privéruimte", "Solo", "Pakket 10", "2027-01-01");
+  const dayBefore = findPrice(catalogue, "Privéruimte", "Solo", "Pakket 10", "2026-12-31");
+
+  check("verkoop vóór de wijziging houdt het oude bedrag", before?.amount, 650);
+  check("verkoop erna krijgt het nieuwe bedrag", after?.amount, 695);
+  check("op de ingangsdatum geldt het nieuwe bedrag", onSwitch?.amount, 695);
+  check("de dag ervoor geldt nog het oude", dayBefore?.amount, 650);
+  check("historiek bevat beide versies", priceHistory(catalogue, "PR-SOLO-10").length, 2);
+  check("historiek staat nieuwste eerst", priceHistory(catalogue, "PR-SOLO-10")[0].amount, 695);
+  check("andere producten blijven ongemoeid", findPrice(catalogue, "Aan huis", "Solo", "Pakket 10", "2027-03-01")?.amount, 760);
+}
 
 // ---------- credits ----------
 console.log("\ncredits");

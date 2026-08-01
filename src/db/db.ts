@@ -41,6 +41,13 @@ export const db = new PtAdminDb();
  * so anything stored before that needs filling in. Idempotent.
  */
 async function migrateRecords(): Promise<void> {
+  // Prices gained versioning: the original rows become version one of themselves.
+  const prices = await db.prices.toArray();
+  for (const p of prices) {
+    if (p.baseCode) continue;
+    await db.prices.update(p.code, { baseCode: p.code });
+  }
+
   const invoices = await db.invoices.toArray();
   for (const inv of invoices) {
     const needsLines = inv.lines.some((l) => l.quantity === undefined);
