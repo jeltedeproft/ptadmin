@@ -100,8 +100,10 @@ $$;
 
 -- ------------------------------------------------------------------- prices
 -- Versioned: base_code is the stable product, code one priced period of it.
+-- Keyed on (coach_id, code): a productcode is unique within one coach's
+-- catalogue, not across the whole database.
 create table public.prices (
-  code            text primary key,
+  code            text not null,
   coach_id        uuid not null references auth.users on delete cascade,
   base_code       text not null,
   location        text not null check (location in ('Privéruimte', 'Aan huis', 'Online')),
@@ -114,7 +116,8 @@ create table public.prices (
   active_until    date,
   active          boolean not null default true,
   note            text,
-  created_at      timestamptz not null default now()
+  created_at      timestamptz not null default now(),
+  primary key (coach_id, code)
 );
 
 create index on public.prices (coach_id, base_code);

@@ -4,6 +4,7 @@ import { exportBackup, importBackup } from "../domain/backup";
 import { EXPORTS, exportCsv } from "../domain/csv";
 import { useAuth } from "../auth/AuthProvider";
 import { hasBackend } from "../db/supabase";
+import SyncPanel from "../components/SyncPanel";
 
 function Account() {
   const { session, role, offline, signOut } = useAuth();
@@ -112,6 +113,8 @@ export default function More() {
         />
         {busy && <p className="sub">{busy}</p>}
       </div>
+
+      <SyncPanel />
 
       <Account />
 

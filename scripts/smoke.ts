@@ -17,6 +17,7 @@ import { buildMonthlySeries, buildReport } from "../src/domain/reporting";
 import { barPath, niceMax, ticks } from "../src/components/charts";
 import { toCsv } from "../src/domain/csv";
 import { hashCode, makeSalt, sameHash, verifyCode } from "../src/domain/lock";
+import { CLIENTS, PRICES, SESSIONS, SPECS, TRANSACTIONS } from "../src/sync/rows";
 import { DEFAULT_PRICES, DEFAULT_SETTINGS } from "../src/db/seed";
 import type { Client, InformEntry, Session, Transaction } from "../src/db/schema";
 import type { ClientOverview } from "../src/hooks/useData";
@@ -389,6 +390,71 @@ console.log("\ntoegangscode");
   // Same code, different salt must not produce the same hash.
   check("ander zout geeft andere hash", (await hashCode("1234", makeSalt())) === hash, false);
   check("vergelijking op lengte", sameHash("abc", "abcd"), false);
+}
+
+// ---------- synchronisatie ----------
+console.log("\nsynchronisatie");
+{
+  const COACH = "00000000-0000-0000-0000-000000000009";
+  // Local id 1 became remote id 77; local session 5 became remote 88.
+  const resolve = (t: string, id: number) =>
+    t === "clients" && id === 1 ? 77 : t === "sessions" && id === 5 ? 88 : undefined;
+  const unresolve = (t: string, id: string | number) =>
+    t === "clients" && id === 77 ? 1 : t === "sessions" && id === 88 ? 5 : undefined;
+
+  const client: Client = {
+    id: 1,
+    name: "Test Persoon",
+    status: "Actief",
+    startDate: "2026-02-09",
+    location: "Aan huis",
+    email: "x@example.com",
+  };
+  const row = CLIENTS.toRow(client, COACH, resolve)!;
+  check("klant krijgt de coach mee", row.coach_id, COACH);
+  check("camelCase wordt snake_case", [row.start_date, row.billing_name], ["2026-02-09", null]);
+  check("heen en terug behoudt de naam", CLIENTS.fromRow(row, unresolve)!.name, "Test Persoon");
+  check("heen en terug behoudt de locatie", CLIENTS.fromRow(row, unresolve)!.location, "Aan huis");
+
+  // Foreign keys must be rewritten, not copied.
+  const tx: Transaction = { ...pack(9, "2026-07-28", 4), clientId: 1, sessionId: 5 };
+  const txRow = TRANSACTIONS.toRow(tx, COACH, resolve)!;
+  check("klantverwijzing wordt vertaald", txRow.client_id, 77);
+  check("sessieverwijzing wordt vertaald", txRow.session_id, 88);
+  check("lokale id gaat niet mee", txRow.id, undefined);
+  const back = TRANSACTIONS.fromRow(txRow, unresolve)!;
+  check("terugvertaald naar lokale klant", back.clientId, 1);
+  check("terugvertaald naar lokale sessie", back.sessionId, 5);
+  check("bedrag blijft gelijk", back.amount, tx.amount);
+
+  // A record whose client has not been pushed yet must be skipped, not sent
+  // with a dangling reference.
+  const orphan: Transaction = { ...pack(10, "2026-07-28", 4), clientId: 999 };
+  check("wees zonder klant wordt overgeslagen", TRANSACTIONS.toRow(orphan, COACH, resolve), null);
+  check("wees bij ophalen wordt overgeslagen",
+    TRANSACTIONS.fromRow({ ...txRow, client_id: 12345 }, unresolve), null);
+
+  // Postgres hands back numerics as strings and dates as timestamps.
+  const numeric = TRANSACTIONS.fromRow({ ...txRow, amount: "650.00", date: "2026-07-28T00:00:00+00:00" }, unresolve)!;
+  check("numeriek uit Postgres wordt een getal", numeric.amount, 650);
+  check("datum wordt afgekapt tot de dag", numeric.date, "2026-07-28");
+
+  const sess1: Session = { id: 3, date: "2026-03-01", clientId: 1, location: "Privéruimte", sessionType: "Duo", status: "Uitgevoerd", groupId: "G0041" };
+  const sRow = SESSIONS.toRow(sess1, COACH, resolve)!;
+  check("groepsnummer gaat mee", sRow.group_id, "G0041");
+  check("sessie zonder groep wordt null",
+    SESSIONS.toRow({ ...sess1, groupId: undefined }, COACH, resolve)!.group_id, null);
+
+  check("prijs houdt zijn eigen sleutel", PRICES.toRow(DEFAULT_PRICES[0], COACH, resolve)!.code, "PR-SOLO-LOS");
+  check("prijs heen en terug", PRICES.fromRow(PRICES.toRow(DEFAULT_PRICES[1], COACH, resolve)!, unresolve)!.amount, 650);
+
+  // Push order: nothing may be sent before what it points at.
+  const order = SPECS.map((s) => s.local);
+  for (const spec of SPECS) {
+    for (const dep of spec.dependsOn) {
+      check(`${spec.local} komt na ${dep}`, order.indexOf(dep) < order.indexOf(spec.local), true);
+    }
+  }
 }
 
 console.log(`\n${failures === 0 ? "Alles in orde." : `${failures} test(s) gefaald.`}`);

@@ -11,6 +11,18 @@ import type {
 } from "./schema";
 import { DEFAULT_PRICES, DEFAULT_SETTINGS } from "./seed";
 
+/** Local auto-increment ↔ the id Postgres assigned. */
+export interface IdMap {
+  table: string;
+  localId: number;
+  remoteId: string | number;
+}
+
+export interface SyncMeta {
+  key: string;
+  value: string;
+}
+
 export class PtAdminDb extends Dexie {
   clients!: Table<Client, number>;
   leads!: Table<Lead, number>;
@@ -20,6 +32,8 @@ export class PtAdminDb extends Dexie {
   inform!: Table<InformEntry, number>;
   invoices!: Table<Invoice, number>;
   settings!: Table<Settings, number>;
+  idmap!: Table<IdMap, [string, number]>;
+  syncmeta!: Table<SyncMeta, string>;
 
   constructor() {
     super("ptadmin");
@@ -40,6 +54,12 @@ export class PtAdminDb extends Dexie {
     });
     this.version(3).stores({
       leads: "++id, name, status, followUpOn",
+    });
+    // Sync bookkeeping. idmap ties a local auto-increment to the id Postgres
+    // assigned; syncmeta remembers how far the last pull got.
+    this.version(4).stores({
+      idmap: "[table+localId], [table+remoteId], table",
+      syncmeta: "key",
     });
   }
 }

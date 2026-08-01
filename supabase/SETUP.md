@@ -17,7 +17,8 @@ account voor nodig.
 3. Nieuwe query → plak `supabase/migrations/0002_grants.sql` en voer uit.
    (Zit ook al in 0001; los uitvoeren is bedoeld voor een databank waar 0001
    al gedraaid heeft. Twee keer draaien kan geen kwaad.)
-4. Nieuwe query → plak `supabase/tests/rls_test.sql` en voer uit.
+4. Nieuwe query → plak `supabase/migrations/0003_prices_per_coach.sql` en voer uit.
+5. Nieuwe query → plak `supabase/tests/rls_test.sql` en voer uit.
 
 Die tweede stap is niet optioneel. Hij bouwt twee coaches met eigen klanten,
 controleert wie wat ziet, en draait alles terug. Je hoort in de output enkel
