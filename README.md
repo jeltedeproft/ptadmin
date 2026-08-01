@@ -127,9 +127,18 @@ komt, in plaats van de persoonsnaam.
 INFORM-facturen groeperen per trainingstype — "Solo PT · 12 × €45" — en
 vermelden bewust geen klantnamen; die blijven intern.
 
+## Toegangscode
+
+Optioneel, in te stellen onder Instellingen. Beschermt tegen iemand die het
+toestel oppakt en de app opent — niet tegen iemand die de ontwikkelaarstools
+opent, want de gegevens in IndexedDB blijven onversleuteld. Voor dat laatste
+zijn de schermvergrendeling en schijfversleuteling van het toestel de juiste
+bescherming.
+
 ## Nog niet gedaan
 
 - Sync tussen toestellen (bewust: v1 is lokaal, zie hierboven)
-- Facturen automatisch mailen
-- Agenda/planning van toekomstige sessies — het Excel had dit ook niet
-- Het CRM-tabblad was leeg in het Excel, dus er is niets om over te nemen
+- Facturen automatisch mailen, en betaalherinneringen
+- Agenda/planning van toekomstige sessies
+- Evaluatieformulieren met metingen en voortgang
+- Klantportaal, online betalingen, boekhoudkoppeling
