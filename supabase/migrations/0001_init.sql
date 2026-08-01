@@ -289,8 +289,40 @@ create trigger on_auth_user_created
   for each row execute function public.handle_new_user();
 
 -- ================================================================== SECURITY
--- Enable RLS on every table. Without this line a table is world-readable to
--- anyone holding the anon key, which is published in the web app.
+--
+-- Two independent layers, and both are needed:
+--   GRANTs decide whether a role may touch a table at all;
+--   RLS decides which rows it then sees.
+-- Without the grants below every query fails with "permission denied"; without
+-- RLS every grant is a full table read.
+
+grant usage on schema public to authenticated, service_role;
+
+-- Logged-in users may attempt everything; RLS decides what actually lands.
+-- A client is 'authenticated' too, and is held read-only by policy, not grant.
+grant select, insert, update, delete on all tables in schema public to authenticated;
+grant usage, select on all sequences in schema public to authenticated;
+
+grant all on all tables in schema public to service_role;
+grant all on all sequences in schema public to service_role;
+
+-- Anything added later inherits the same rules.
+alter default privileges in schema public
+  grant select, insert, update, delete on tables to authenticated;
+alter default privileges in schema public
+  grant usage, select on sequences to authenticated;
+alter default privileges in schema public grant all on tables to service_role;
+alter default privileges in schema public grant all on sequences to service_role;
+
+-- 'anon' deliberately gets nothing. Nobody reads this data without logging in,
+-- so an unauthenticated request should stop at the grant, before RLS is even
+-- consulted. Supabase's own default is to grant anon SELECT and lean entirely
+-- on RLS; this is one layer stricter on purpose.
+revoke all on all tables in schema public from anon;
+revoke all on all sequences in schema public from anon;
+
+-- Enable RLS on every table. Without this line a table is readable by any
+-- logged-in user, including one client reading another's records.
 alter table public.profiles        enable row level security;
 alter table public.clients         enable row level security;
 alter table public.prices          enable row level security;

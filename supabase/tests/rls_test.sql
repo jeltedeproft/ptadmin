@@ -186,17 +186,45 @@ begin
 end $$;
 
 -- ------------------------------------------------------------ anonymous view
+-- anon holds no grants at all, so it is stopped before RLS is consulted.
+-- A denied query here is the pass; an empty result would mean the grant leaked
+-- through and only RLS was holding the line.
 do $$
+declare
+  t text;
+  denied boolean;
 begin
   perform set_config('role', 'anon', true);
   perform set_config('request.jwt.claims', '', true);
-  perform pg_temp.expect('anoniem ziet geen klanten',
-    (select count(*) from public.clients), 0);
-  perform pg_temp.expect('anoniem ziet geen sessies',
-    (select count(*) from public.sessions), 0);
-  perform pg_temp.expect('anoniem ziet geen facturen',
-    (select count(*) from public.invoices), 0);
+
+  foreach t in array array['clients', 'sessions', 'transactions', 'invoices',
+                           'inform_entries', 'leads', 'settings', 'profiles'] loop
+    begin
+      execute format('select count(*) from public.%I', t);
+      denied := false;
+    exception when insufficient_privilege then denied := true;
+    end;
+    if not denied then
+      perform pg_temp.as_admin();
+      raise exception 'FAIL anoniem kon public.% lezen', t;
+    end if;
+  end loop;
+
+  raise notice 'ok   anoniem wordt geweigerd op alle tabellen';
   perform pg_temp.as_admin();
+end $$;
+
+-- The grants themselves, independent of any policy.
+do $$
+declare leaked text;
+begin
+  select string_agg(distinct table_name, ', ') into leaked
+  from information_schema.role_table_grants
+  where table_schema = 'public' and grantee = 'anon';
+  if leaked is not null then
+    raise exception 'FAIL anon heeft nog rechten op: %', leaked;
+  end if;
+  raise notice 'ok   anon heeft nergens rechten';
 end $$;
 
 -- Every table must actually have RLS switched on; a forgotten one is a leak.

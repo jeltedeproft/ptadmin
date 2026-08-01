@@ -14,7 +14,10 @@ account voor nodig.
 
 1. In het project → **SQL Editor** → **New query**
 2. Plak de volledige inhoud van `supabase/migrations/0001_init.sql` en voer uit.
-3. Nieuwe query → plak `supabase/tests/rls_test.sql` en voer uit.
+3. Nieuwe query → plak `supabase/migrations/0002_grants.sql` en voer uit.
+   (Zit ook al in 0001; los uitvoeren is bedoeld voor een databank waar 0001
+   al gedraaid heeft. Twee keer draaien kan geen kwaad.)
+4. Nieuwe query → plak `supabase/tests/rls_test.sql` en voer uit.
 
 Die tweede stap is niet optioneel. Hij bouwt twee coaches met eigen klanten,
 controleert wie wat ziet, en draait alles terug. Je hoort in de output enkel
