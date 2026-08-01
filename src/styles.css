@@ -12,6 +12,13 @@
   --crit: #f87171;
   --radius: 14px;
   --nav-h: 62px;
+
+  /* Chart palette — categorical slots 1 and 2, stepped for the dark surface.
+     Validated against this app's card surfaces (see components/charts.tsx). */
+  --series-1: #3987e5;
+  --series-2: #d95926;
+  --grid: #263352;
+  --axis: #38486d;
   color-scheme: dark;
 }
 
@@ -28,6 +35,10 @@
     --ok: #0f9d66;
     --warn: #b57905;
     --crit: #d0342c;
+    --series-1: #2a78d6;
+    --series-2: #eb6834;
+    --grid: #e6eaf2;
+    --axis: #c9d2e0;
     color-scheme: light;
   }
 }
@@ -485,6 +496,141 @@ button:hover,
 }
 
 /* ---------- misc ---------- */
+
+/* ---------- charts ---------- */
+
+.chart {
+  margin-bottom: 10px;
+}
+
+.chart-plot {
+  position: relative;
+  margin-top: 10px;
+}
+
+.chart-plot svg {
+  display: block;
+  overflow: visible;
+}
+
+/* Marks carry the series colour; text never does. */
+.chart path.s1,
+.chart circle.s1 {
+  fill: var(--series-1);
+}
+.chart path.s2 {
+  fill: var(--series-2);
+}
+.chart path.line {
+  fill: none;
+  stroke: var(--series-1);
+  stroke-width: 2;
+  stroke-linecap: round;
+  stroke-linejoin: round;
+}
+.chart circle.ring {
+  fill: var(--surface);
+}
+
+.chart .grid {
+  stroke: var(--grid);
+  stroke-width: 1;
+}
+.chart .axis {
+  stroke: var(--axis);
+  stroke-width: 1;
+}
+.chart .crosshair {
+  stroke: var(--axis);
+  stroke-width: 1;
+}
+
+.chart .tick {
+  fill: var(--muted);
+  font-size: 10.5px;
+  font-variant-numeric: tabular-nums;
+}
+.chart .value {
+  fill: var(--text);
+  font-size: 11px;
+  font-weight: 600;
+}
+
+.chart-legend {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 14px;
+  margin-top: 10px;
+  font-size: 12.5px;
+  color: var(--muted);
+}
+
+.chart-legend span,
+.chart-tip span {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+}
+
+.chart-legend i,
+.chart-tip i {
+  width: 10px;
+  height: 10px;
+  border-radius: 3px;
+  flex: none;
+}
+
+.chart-legend i.s1,
+.chart-tip i.s1 {
+  background: var(--series-1);
+}
+.chart-legend i.s2,
+.chart-tip i.s2 {
+  background: var(--series-2);
+}
+
+.chart-tip {
+  position: absolute;
+  top: 4px;
+  display: flex;
+  flex-direction: column;
+  gap: 3px;
+  padding: 8px 10px;
+  border-radius: 9px;
+  background: var(--surface-2);
+  border: 1px solid var(--border);
+  font-size: 12.5px;
+  pointer-events: none;
+  white-space: nowrap;
+  z-index: 5;
+}
+
+.datatable {
+  width: 100%;
+  border-collapse: collapse;
+  font-size: 13px;
+  margin-top: 10px;
+}
+
+.datatable th,
+.datatable td {
+  text-align: right;
+  padding: 6px 8px;
+  border-bottom: 1px solid var(--border);
+  font-variant-numeric: tabular-nums;
+  white-space: nowrap;
+}
+
+.datatable th:first-child,
+.datatable td:first-child {
+  text-align: left;
+  font-variant-numeric: normal;
+}
+
+.datatable th {
+  color: var(--muted);
+  font-weight: 600;
+}
 
 /* Status tinting for transaction rows. */
 .list > .tone-open {

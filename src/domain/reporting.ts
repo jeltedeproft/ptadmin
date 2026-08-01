@@ -73,6 +73,46 @@ export interface DashboardReport {
 
 const inRange = (d: IsoDate, start: IsoDate, end: IsoDate) => d >= start && d <= end;
 
+export interface MonthlyPoint {
+  key: string; // "2026-03"
+  own: number;
+  inform: number;
+  total: number;
+  sessions: number;
+  /** Clients with at least one charged session that month. */
+  activeClients: number;
+}
+
+/** Twelve rows for one calendar year, January first, zero-filled. */
+export function buildMonthlySeries(year: number, data: DashboardData): MonthlyPoint[] {
+  const rows: MonthlyPoint[] = [];
+  for (let m = 1; m <= 12; m++) {
+    const key = `${year}-${String(m).padStart(2, "0")}`;
+    const { start, end } = monthRange(key);
+
+    const own = data.transactions
+      .filter((t) => inRange(t.date, start, end))
+      .reduce((s, t) => s + t.amount, 0);
+    const inform = data.inform
+      .filter((e) => inRange(e.date, start, end))
+      .reduce((s, e) => s + e.amount, 0);
+
+    const monthSessions = data.sessions.filter(
+      (s) => isChargeable(s.status) && inRange(s.date, start, end),
+    );
+
+    rows.push({
+      key,
+      own,
+      inform,
+      total: own + inform,
+      sessions: monthSessions.length,
+      activeClients: new Set(monthSessions.map((s) => s.clientId)).size,
+    });
+  }
+  return rows;
+}
+
 /**
  * Every figure on the dashboard, for one selected month. Year figures follow
  * the year that month sits in, so paging back into December also moves the

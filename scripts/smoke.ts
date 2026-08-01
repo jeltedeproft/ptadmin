@@ -13,7 +13,8 @@ import {
 import { buildProductCode, findPrice, priceHistory, repriceItem } from "../src/domain/pricing";
 import { socialStatus, vatStatus } from "../src/domain/thresholds";
 import { nextNumber } from "../src/domain/invoicing";
-import { buildReport } from "../src/domain/reporting";
+import { buildMonthlySeries, buildReport } from "../src/domain/reporting";
+import { barPath, niceMax, ticks } from "../src/components/charts";
 import { DEFAULT_PRICES, DEFAULT_SETTINGS } from "../src/db/seed";
 import type { Client, InformEntry, Session, Transaction } from "../src/db/schema";
 import type { ClientOverview } from "../src/hooks/useData";
@@ -309,6 +310,52 @@ console.log("\ndashboard per maand");
   check("geschatte jaaromzet = gemiddelde x 12", Math.round(august.revenue.projectedYear), 2108);
   check("niets ontvangen zonder betaaldatum", august.revenue.receivedMonth, 0);
   check("openstaand telt onbetaalde verkopen", august.outstanding, 0);
+}
+
+// ---------- grafieken ----------
+console.log("\ngrafieken");
+{
+  check("asplafond rondt netjes af", [niceMax(650), niceMax(1240), niceMax(37), niceMax(8)], [1000, 2000, 50, 10]);
+  check("asplafond bij nul", niceMax(0), 1);
+  check("asplafond exact op een ronde waarde", niceMax(1000), 1000);
+  check("tickwaarden lopen tot het plafond", ticks(1000), [0, 250, 500, 750, 1000]);
+
+  // A zero-height bar draws nothing rather than a stray sliver.
+  check("staaf van nul is leeg", barPath(0, 100, 20, 0, true), "");
+  // The rounded end must never eat more than the bar's own height.
+  const stub = barPath(0, 98, 20, 2, true);
+  check("afronding klemt op lage staaf", stub.includes("Q0,98 2,98"), true);
+
+  // Twelve months on a narrow phone must still leave room for the labels.
+  const narrow = 320;
+  const band = (narrow - 46 - 12) / 12;
+  check("staafbreedte blijft binnen de band", Math.min(24, band * 0.62) < band, true);
+  check("staaf haalt de maximumdikte niet op smal scherm", Math.round(Math.min(24, band * 0.62)), 14);
+
+  // Nothing may be drawn outside the svg box, at any realistic width.
+  for (const w of [320, 375, 768, 1040]) {
+    const plotW = w - 46 - 12;
+    const b = plotW / 12;
+    const bw = Math.min(24, b * 0.62);
+    const firstLeft = 46 + b * 0 + b / 2 - bw / 2;
+    const lastRight = 46 + b * 11 + b / 2 + bw / 2;
+    check(`staven blijven binnen het kader op ${w}px`, firstLeft > 0 && lastRight < w, true);
+  }
+
+  const series = buildMonthlySeries(2026, {
+    overview: [],
+    transactions: [{ ...pack(1, "2026-03-10", 4), clientId: 1 }],
+    sessions: [sess(1, "2026-03-11"), sess(2, "2026-03-12"), sess(3, "2026-04-01")],
+    inform: [
+      { id: 1, date: "2026-03-05", sessionType: "Solo PT", hours: 1, hourlyRate: 45, amount: 45, invoiced: false },
+    ],
+    invoices: [],
+  });
+  check("twaalf maanden, altijd", series.length, 12);
+  check("maart bevat pakket en inform", [series[2].own, series[2].inform, series[2].total], [650, 45, 695]);
+  check("lege maand blijft nul", series[0].total, 0);
+  check("sessies per maand", [series[2].sessions, series[3].sessions], [2, 1]);
+  check("actieve klanten telt unieke klanten", series[2].activeClients, 1);
 }
 
 console.log(`\n${failures === 0 ? "Alles in orde." : `${failures} test(s) gefaald.`}`);

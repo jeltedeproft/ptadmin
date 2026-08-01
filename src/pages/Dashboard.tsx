@@ -9,8 +9,14 @@ import {
   formatMonth,
   shiftMonthKey,
 } from "../domain/dates";
-import { buildReport } from "../domain/reporting";
+import { buildMonthlySeries, buildReport } from "../domain/reporting";
+import { Columns, LineTrend, StackedColumns, monthLabel } from "../components/charts";
 import { LEVEL_LABEL, socialStatus, vatStatus } from "../domain/thresholds";
+
+/** Axis ticks and tooltips: whole euros, thousands as "12k". */
+const compactEuro = (n: number) =>
+  n >= 1000 ? `€${(n / 1000).toFixed(n % 1000 === 0 ? 0 : 1)}k` : `€${Math.round(n)}`;
+const whole = (n: number) => String(Math.round(n));
 
 export default function Dashboard() {
   const settings = useSettings();
@@ -21,10 +27,22 @@ export default function Dashboard() {
   const invoices = useInvoices();
   const [month, setMonth] = useState(currentMonthKey());
 
-  const report = useMemo(() => {
-    if (!settings || !overview || !transactions || !sessions || !inform || !invoices) return null;
-    return buildReport(month, { overview, transactions, sessions, inform, invoices }, settings);
-  }, [month, settings, overview, transactions, sessions, inform, invoices]);
+  const data = useMemo(
+    () =>
+      settings && overview && transactions && sessions && inform && invoices
+        ? { overview, transactions, sessions, inform, invoices }
+        : null,
+    [settings, overview, transactions, sessions, inform, invoices],
+  );
+
+  const report = useMemo(
+    () => (data && settings ? buildReport(month, data, settings) : null),
+    [month, data, settings],
+  );
+  const chartRows = useMemo(
+    () => (data && report ? buildMonthlySeries(report.year, data) : []),
+    [data, report],
+  );
 
   if (!report || !settings) return <Empty>Laden…</Empty>;
 
@@ -141,6 +159,29 @@ export default function Dashboard() {
           <div className="item-sub muted">Dit is een raming, geen exacte fiscale berekening.</div>
         </Card>
       </div>
+
+      <h2>Grafieken {report.year}</h2>
+      <StackedColumns
+        title="Omzet per maand"
+        subtitle="Eigen klanten tegenover IN FORM"
+        rows={chartRows.map((r, i) => ({ key: r.key, label: monthLabel(i), values: [r.own, r.inform] }))}
+        names={["Eigen klanten", "IN FORM"]}
+        format={compactEuro}
+      />
+      <Columns
+        title="Sessies per maand"
+        subtitle="Aangerekende sessies"
+        rows={chartRows.map((r, i) => ({ key: r.key, label: monthLabel(i), values: [r.sessions] }))}
+        valueName="Sessies"
+        format={whole}
+      />
+      <LineTrend
+        title="Actieve klanten per maand"
+        subtitle="Klanten met minstens één training in die maand"
+        rows={chartRows.map((r, i) => ({ key: r.key, label: monthLabel(i), values: [r.activeClients] }))}
+        valueName="Klanten"
+        format={whole}
+      />
 
       <h2>Actiepunten</h2>
       <Actions report={report} settings={settings} />
