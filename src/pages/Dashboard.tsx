@@ -1,17 +1,15 @@
+import { useMemo, useState, type ReactNode } from "react";
 import { Link } from "react-router-dom";
 import { Badge, Card, Empty, Kpi, Meter } from "../components/ui";
 import { useInform, useInvoices, useOverview, useSessions, useSettings, useTransactions } from "../hooks/useData";
-import { isChargeable, SIGNAL_LABEL } from "../domain/credits";
 import {
-  addDays,
-  daysBetween,
+  currentMonthKey,
   formatDateShort,
   formatEuro,
-  startOfMonth,
-  startOfWeek,
-  startOfYear,
-  today,
+  formatMonth,
+  shiftMonthKey,
 } from "../domain/dates";
+import { buildReport } from "../domain/reporting";
 import { LEVEL_LABEL, socialStatus, vatStatus } from "../domain/thresholds";
 
 export default function Dashboard() {
@@ -21,86 +19,89 @@ export default function Dashboard() {
   const sessions = useSessions();
   const inform = useInform();
   const invoices = useInvoices();
+  const [month, setMonth] = useState(currentMonthKey());
 
-  if (!settings || !overview || !transactions || !sessions || !inform || !invoices) {
-    return <Empty>Laden…</Empty>;
-  }
+  const report = useMemo(() => {
+    if (!settings || !overview || !transactions || !sessions || !inform || !invoices) return null;
+    return buildReport(month, { overview, transactions, sessions, inform, invoices }, settings);
+  }, [month, settings, overview, transactions, sessions, inform, invoices]);
 
-  const now = today();
-  const yearStart = startOfYear();
-  const monthStart = startOfMonth();
-  const weekStart = startOfWeek();
+  if (!report || !settings) return <Empty>Laden…</Empty>;
 
-  const ownRevenueYear = transactions.filter((t) => t.date >= yearStart).reduce((s, t) => s + t.amount, 0);
-  const informRevenueYear = inform.filter((e) => e.date >= yearStart).reduce((s, e) => s + e.amount, 0);
-  const revenueYear = ownRevenueYear + informRevenueYear;
-
-  const revenueMonth =
-    transactions.filter((t) => t.date >= monthStart).reduce((s, t) => s + t.amount, 0) +
-    inform.filter((e) => e.date >= monthStart).reduce((s, e) => s + e.amount, 0);
-
-  const outstanding =
-    transactions.filter((t) => !t.paid).reduce((s, t) => s + t.amount, 0) +
-    invoices.filter((i) => i.status !== "Betaald" && i.status !== "Geannuleerd").reduce((s, i) => s + i.amount, 0);
-
-  const chargeable = sessions.filter((s) => isChargeable(s.status));
-  const sessionsWeek = chargeable.filter((s) => s.date >= weekStart && s.date <= now).length;
-  const sessionsMonth = chargeable.filter((s) => s.date >= monthStart).length;
-  const sessionsYear = chargeable.filter((s) => s.date >= yearStart).length;
-
-  const activeClients = overview.filter((o) => o.client.status === "Actief").length;
-
-  const vat = vatStatus(revenueYear, settings);
-  const social = socialStatus(revenueYear, settings);
-
-  // Action list — the things worth doing something about today.
-  const expiringSoon = overview.filter(
-    (o) =>
-      o.ledger.available > 0 &&
-      o.ledger.nextExpiry &&
-      daysBetween(now, o.ledger.nextExpiry) <= settings.packExpiryWarningDays,
-  );
-  // Only clients who actually work in packs — someone who buys single sessions
-  // sits at zero credits by design and should not be nagged about it.
-  const outOfCredits = overview.filter(
-    (o) => o.client.status === "Actief" && (o.signal === "op" || o.signal === "verlopen"),
-  );
-  const inactive = overview.filter((o) => o.client.status === "Actief" && o.signal === "inactief");
-  const evaluationsDue = overview.filter(
-    (o) =>
-      o.client.nextEvaluation &&
-      o.client.nextEvaluation <= addDays(now, settings.evaluationLookaheadDays),
-  );
-  const unpaid = transactions.filter((t) => !t.paid);
-  const uninvoicedInform = inform.filter((e) => !e.invoiced);
+  const isCurrentMonth = month === currentMonthKey();
+  const vat = vatStatus(report.revenue.year, settings);
+  const social = socialStatus(report.revenue.year, settings);
+  const { clients, sessions: sess, revenue } = report;
 
   return (
     <>
-      <h1>Dashboard {new Date().getFullYear()}</h1>
-      <p className="sub">Alles wat je vandaag moet weten, in één scherm.</p>
+      <h1>Dashboard</h1>
+
+      <div className="monthnav">
+        <button aria-label="Vorige maand" onClick={() => setMonth(shiftMonthKey(month, -1))}>
+          ‹
+        </button>
+        <div className="monthnav-label">
+          <strong>{formatMonth(month)}</strong>
+          {!isCurrentMonth && (
+            <button className="btn-sm" onClick={() => setMonth(currentMonthKey())}>
+              Vandaag
+            </button>
+          )}
+        </div>
+        <button aria-label="Volgende maand" onClick={() => setMonth(shiftMonthKey(month, 1))}>
+          ›
+        </button>
+      </div>
 
       {!settings.businessName && (
-        <Link to="/instellingen" className="alert" style={{ textDecoration: "none", color: "inherit", display: "block", marginBottom: 16 }}>
+        <Link to="/instellingen" className="alert" style={linkAlert}>
           <strong>Vul je bedrijfsgegevens in</strong> — naam, adres en IBAN zijn nodig voor je facturen.
         </Link>
       )}
 
       <div className="grid">
-        <Kpi label="Omzet deze maand" value={formatEuro(revenueMonth)} />
-        <Kpi label="Omzet dit jaar" value={formatEuro(revenueYear)} />
-        <Kpi label="Openstaand" value={formatEuro(outstanding)} />
-        <Kpi label="Actieve klanten" value={activeClients} />
+        <Kpi label={`Omzet ${formatMonth(month)}`} value={formatEuro(revenue.month)} />
+        <Kpi label={`Omzet ${report.year}`} value={formatEuro(revenue.year)} />
+        <Kpi label="Openstaand" value={formatEuro(report.outstanding)} />
+        <Kpi label="Actieve klanten" value={clients.active} />
+        <Kpi label="Sessies deze week" value={sess.week} />
+        <Kpi label="Ruimte tot btw-grens" value={formatEuro(Math.max(0, vat.remaining))} small />
+      </div>
+
+      <h2>Business</h2>
+      <div className="grid">
+        <Kpi label="Omzet eigen klanten" value={formatEuro(revenue.own)} small />
+        <Kpi label="Omzet IN FORM" value={formatEuro(revenue.inform)} small />
+        <Kpi label={`Ontvangen ${formatMonth(month)}`} value={formatEuro(revenue.receivedMonth)} small />
+        <Kpi label="Gemiddelde maandomzet" value={formatEuro(revenue.averageMonth)} small />
+        <Kpi label="Geschatte jaaromzet" value={formatEuro(revenue.projectedYear)} small />
+      </div>
+
+      <h2>Klanten</h2>
+      <div className="grid">
+        <Kpi label="Actief" value={clients.active} />
+        <Kpi label="Gepauzeerd" value={clients.paused} />
+        <Kpi label="Stopgezet" value={clients.stopped} />
+        <Kpi label={`Nieuw in ${formatMonth(month)}`} value={clients.newInMonth.length} />
+        <Kpi label="Evaluaties deze maand" value={clients.evaluationsInMonth.length} />
+        <Kpi label="Weinig credits" value={clients.lowCredits.length} />
       </div>
 
       <h2>Trainingen</h2>
       <div className="grid">
-        <Kpi label="Sessies deze week" value={sessionsWeek} />
-        <Kpi label="Sessies deze maand" value={sessionsMonth} />
-        <Kpi label="Sessies dit jaar" value={sessionsYear} />
-        <Kpi label="Omzet IN FORM" value={formatEuro(informRevenueYear)} small />
+        <Kpi label="Sessies deze week" value={sess.week} />
+        <Kpi label={`Sessies ${formatMonth(month)}`} value={sess.month} />
+        <Kpi label={`Sessies ${report.year}`} value={sess.year} />
       </div>
+      {sess.month > 0 && (
+        <Card className="stack" style={{ marginTop: 10 }}>
+          <Split label="Per type" counts={sess.byType} />
+          <Split label="Per locatie" counts={sess.byLocation} />
+        </Card>
+      )}
 
-      <h2>Grensbewaking</h2>
+      <h2>Grensbewaking {report.year}</h2>
       <div className="grid" style={{ gridTemplateColumns: "repeat(auto-fit, minmax(260px, 1fr))" }}>
         <Card>
           <div className="row-between">
@@ -115,6 +116,10 @@ export default function Dashboard() {
             Nog {formatEuro(Math.max(0, vat.remaining))} ruimte — wettelijke grens{" "}
             {formatEuro(settings.vatThreshold)}, marge {formatEuro(settings.vatSafetyMargin)}.
           </div>
+          <div className="item-sub">
+            Verwacht op jaareinde: {formatEuro(revenue.projectedYear)}
+            {revenue.projectedYear > vat.limit && " — dat gaat over de veilige grens."}
+          </div>
         </Card>
 
         <Card>
@@ -126,56 +131,129 @@ export default function Dashboard() {
           </div>
           <Meter ratio={social.ratio} level={social.level} />
           <div className="item-sub">
-            Geschatte netto winst {formatEuro(social.netProfit)} (omzet − {formatEuro(settings.estimatedBusinessCosts)} kosten)
+            Geschat netto beroepsinkomen {formatEuro(social.netProfit)} (omzet −{" "}
+            {formatEuro(settings.estimatedBusinessCosts)} geschatte kosten)
           </div>
           <div className="item-sub">
-            Vrijstellingsgrens {formatEuro(social.exemptionThreshold)} · hoofdberoepgrens {formatEuro(social.limit)}
+            Vrijstellingsgrens {formatEuro(social.exemptionThreshold)} · hoofdberoepgrens{" "}
+            {formatEuro(social.limit)}
           </div>
+          <div className="item-sub muted">Dit is een raming, geen exacte fiscale berekening.</div>
         </Card>
       </div>
 
       <h2>Actiepunten</h2>
-      <div className="stack">
-        {expiringSoon.map((o) => (
-          <Link key={`exp-${o.client.id}`} to={`/klanten/${o.client.id}`} className="alert" style={{ textDecoration: "none", color: "inherit", display: "block" }}>
-            <strong>{o.client.name}</strong> — {o.ledger.available} credits vervallen op{" "}
-            {formatDateShort(o.ledger.nextExpiry)}
-          </Link>
-        ))}
-        {outOfCredits.map((o) => (
-          <Link key={`op-${o.client.id}`} to={`/klanten/${o.client.id}`} className="alert crit" style={{ textDecoration: "none", color: "inherit", display: "block" }}>
-            <strong>{o.client.name}</strong> — {SIGNAL_LABEL[o.signal].toLowerCase()}, tijd voor een nieuw pakket
-          </Link>
-        ))}
-        {inactive.map((o) => (
-          <Link key={`inact-${o.client.id}`} to={`/klanten/${o.client.id}`} className="alert" style={{ textDecoration: "none", color: "inherit", display: "block" }}>
-            <strong>{o.client.name}</strong> — al {settings.inactiveDays}+ dagen niet getraind
-          </Link>
-        ))}
-        {evaluationsDue.map((o) => (
-          <Link key={`ev-${o.client.id}`} to={`/klanten/${o.client.id}`} className="alert" style={{ textDecoration: "none", color: "inherit", display: "block" }}>
-            <strong>{o.client.name}</strong> — evaluatie gepland op {formatDateShort(o.client.nextEvaluation)}
-          </Link>
-        ))}
-        {unpaid.length > 0 && (
-          <Link to="/verkopen" className="alert crit" style={{ textDecoration: "none", color: "inherit", display: "block" }}>
-            <strong>{unpaid.length} onbetaalde verkoop{unpaid.length === 1 ? "" : "en"}</strong> —{" "}
-            {formatEuro(unpaid.reduce((s, t) => s + t.amount, 0))} openstaand
-          </Link>
-        )}
-        {uninvoicedInform.length > 0 && (
-          <Link to="/inform" className="alert" style={{ textDecoration: "none", color: "inherit", display: "block" }}>
-            <strong>{uninvoicedInform.length} IN FORM-uren nog niet gefactureerd</strong> —{" "}
-            {formatEuro(uninvoicedInform.reduce((s, e) => s + e.amount, 0))}
-          </Link>
-        )}
-        {expiringSoon.length === 0 &&
-          outOfCredits.length === 0 &&
-          inactive.length === 0 &&
-          evaluationsDue.length === 0 &&
-          unpaid.length === 0 &&
-          uninvoicedInform.length === 0 && <Empty>Niets dat je aandacht vraagt. 🎉</Empty>}
-      </div>
+      <Actions report={report} settings={settings} />
     </>
   );
+}
+
+const linkAlert = {
+  textDecoration: "none",
+  color: "inherit",
+  display: "block",
+} as const;
+
+function Split({ label, counts }: { label: string; counts: Record<string, number | undefined> }) {
+  const entries = Object.entries(counts).filter(([, n]) => n);
+  if (entries.length === 0) return null;
+  return (
+    <div className="row-between">
+      <span className="muted">{label}</span>
+      <span>{entries.map(([k, n]) => `${k} ${n}`).join(" · ")}</span>
+    </div>
+  );
+}
+
+function Action({ to, crit, children }: { to: string; crit?: boolean; children: ReactNode }) {
+  return (
+    <Link to={to} className={`alert${crit ? " crit" : ""}`} style={linkAlert}>
+      {children}
+    </Link>
+  );
+}
+
+function Actions({
+  report,
+  settings,
+}: {
+  report: ReturnType<typeof buildReport>;
+  settings: { inactiveDays: number; packExpiryWarningDays: number };
+}) {
+  const { clients, unpaidTransactions, uninvoicedInform, overdueInvoices, unsentInvoices } = report;
+  const items: ReactNode[] = [];
+
+  for (const i of overdueInvoices) {
+    items.push(
+      <Action key={`inv-${i.id}`} to="/facturen" crit>
+        <strong>Factuur {i.number} is te laat</strong> — {formatEuro(i.amount)}, verviel{" "}
+        {formatDateShort(i.dueDate)}
+      </Action>,
+    );
+  }
+  if (unpaidTransactions.length > 0) {
+    items.push(
+      <Action key="unpaid" to="/verkopen" crit>
+        <strong>
+          {unpaidTransactions.length} onbetaalde verkoop{unpaidTransactions.length === 1 ? "" : "en"}
+        </strong>{" "}
+        — {formatEuro(unpaidTransactions.reduce((s, t) => s + t.amount, 0))} openstaand
+      </Action>,
+    );
+  }
+  for (const o of clients.needsPack) {
+    items.push(
+      <Action key={`pack-${o.client.id}`} to={`/klanten/${o.client.id}`} crit>
+        <strong>{o.client.name}</strong> — nieuw pakket nodig
+      </Action>,
+    );
+  }
+  for (const o of clients.expiringPacks) {
+    items.push(
+      <Action key={`exp-${o.client.id}`} to={`/klanten/${o.client.id}`}>
+        <strong>{o.client.name}</strong> — {o.ledger.available} credits vervallen op{" "}
+        {formatDateShort(o.ledger.nextExpiry)}
+      </Action>,
+    );
+  }
+  for (const o of clients.lowCredits) {
+    items.push(
+      <Action key={`low-${o.client.id}`} to={`/klanten/${o.client.id}`}>
+        <strong>{o.client.name}</strong> — nog {o.ledger.available} credit
+        {o.ledger.available === 1 ? "" : "s"}
+      </Action>,
+    );
+  }
+  for (const o of clients.inactive) {
+    items.push(
+      <Action key={`inact-${o.client.id}`} to={`/klanten/${o.client.id}`}>
+        <strong>{o.client.name}</strong> — al {settings.inactiveDays}+ dagen niet getraind
+      </Action>,
+    );
+  }
+  for (const o of clients.evaluationsSoon) {
+    items.push(
+      <Action key={`ev-${o.client.id}`} to={`/klanten/${o.client.id}`}>
+        <strong>{o.client.name}</strong> — evaluatie op {formatDateShort(o.client.nextEvaluation)}
+      </Action>,
+    );
+  }
+  if (uninvoicedInform.length > 0) {
+    items.push(
+      <Action key="inform" to="/inform">
+        <strong>{uninvoicedInform.length} IN FORM-uren nog niet gefactureerd</strong> —{" "}
+        {formatEuro(uninvoicedInform.reduce((s, e) => s + e.amount, 0))}
+      </Action>,
+    );
+  }
+  for (const i of unsentInvoices) {
+    items.push(
+      <Action key={`send-${i.id}`} to="/facturen">
+        <strong>Factuur {i.number} is gemaakt maar nog niet verstuurd</strong>
+      </Action>,
+    );
+  }
+
+  if (items.length === 0) return <Empty>Niets dat je aandacht vraagt. 🎉</Empty>;
+  return <div className="stack">{items}</div>;
 }

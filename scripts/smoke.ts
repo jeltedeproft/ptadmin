@@ -1,11 +1,22 @@
 // Smoke test for the money-relevant logic. Run with: npm test
 import { buildLedger, isChargeable, signalFor } from "../src/domain/credits";
-import { addMonths, daysBetween, formatEuro, startOfWeek, toIso } from "../src/domain/dates";
+import {
+  addMonths,
+  daysBetween,
+  formatEuro,
+  monthRange,
+  monthsElapsed,
+  shiftMonthKey,
+  startOfWeek,
+  toIso,
+} from "../src/domain/dates";
 import { buildProductCode, findPrice } from "../src/domain/pricing";
 import { socialStatus, vatStatus } from "../src/domain/thresholds";
 import { nextNumber } from "../src/domain/invoicing";
+import { buildReport } from "../src/domain/reporting";
 import { DEFAULT_PRICES, DEFAULT_SETTINGS } from "../src/db/seed";
-import type { Session, Transaction } from "../src/db/schema";
+import type { Client, InformEntry, Session, Transaction } from "../src/db/schema";
+import type { ClientOverview } from "../src/hooks/useData";
 
 let failures = 0;
 function check(name: string, actual: unknown, expected: unknown) {
@@ -27,6 +38,16 @@ check("EDATE 6 maanden over jaargrens", addMonths("2026-10-15", 6), "2027-04-15"
 check("daysBetween", daysBetween("2026-01-01", "2026-01-31"), 30);
 check("week start op maandag", startOfWeek(new Date(2026, 6, 31)), "2026-07-27");
 check("euro formatting", formatEuro(650).replace(/ | /g, " "), "€ 650,00");
+
+check("maand vooruit", shiftMonthKey("2026-08", 1), "2026-09");
+check("maand terug over jaargrens", shiftMonthKey("2026-01", -1), "2025-12");
+check("maand 13 vooruit", shiftMonthKey("2026-08", 13), "2027-09");
+check("maandbereik schrikkeljaar", monthRange("2028-02"), { start: "2028-02-01", end: "2028-02-29" });
+check("maandbereik gewoon jaar", monthRange("2026-02"), { start: "2026-02-01", end: "2026-02-28" });
+check("maandbereik december", monthRange("2026-12"), { start: "2026-12-01", end: "2026-12-31" });
+check("maanden verstreken lopend jaar", monthsElapsed(2026, "2026-08-01"), 8);
+check("maanden verstreken vorig jaar", monthsElapsed(2025, "2026-08-01"), 12);
+check("maanden verstreken volgend jaar", monthsElapsed(2027, "2026-08-01"), 0);
 
 // ---------- pricing ----------
 console.log("\npricing");
@@ -203,6 +224,65 @@ check("boven sociale vrijstelling", socialStatus(revenue, s).exempt, false);
 // The threshold that would actually bite: how many packs before the VAT ceiling?
 const packsToLimit = Math.floor(23500 / 650);
 check("pakketten tot btw-plafond", packsToLimit, 36);
+
+// ---------- dashboard rapportage ----------
+console.log("\ndashboard per maand");
+{
+  const ov = (id: number, name: string, status: Client["status"], startDate: string): ClientOverview => ({
+    client: { id, name, status, startDate, location: "Privéruimte" },
+    ledger: buildLedger([], [], "2026-08-01"),
+    signal: "ok",
+    sessionCount: 0,
+  });
+  const informEntry = (id: number, date: string, amount: number): InformEntry => ({
+    id,
+    date,
+    sessionType: "Solo PT",
+    hours: 1,
+    hourlyRate: amount,
+    amount,
+    invoiced: false,
+  });
+
+  const data = {
+    overview: [
+      ov(1, "A", "Actief", "2026-07-03"),
+      ov(2, "B", "Actief", "2026-08-10"),
+      ov(3, "C", "Gepauzeerd", "2025-05-01"),
+      ov(4, "D", "Stopgezet", "2025-06-01"),
+    ],
+    transactions: [
+      { ...pack(1, "2026-07-31", 4), clientId: 1 }, // last day of July
+      { ...pack(2, "2026-08-01", 4), clientId: 2 }, // first day of August
+      { ...pack(3, "2025-12-31", 4), clientId: 1 }, // previous year
+    ],
+    sessions: [sess(1, "2026-07-15"), sess(2, "2026-08-05"), sess(3, "2026-08-06", "Uitgevoerd", "Duo")],
+    inform: [informEntry(1, "2026-07-20", 45), informEntry(2, "2026-08-02", 60)],
+    invoices: [],
+  };
+
+  const july = buildReport("2026-07", data, DEFAULT_SETTINGS, "2026-08-01");
+  const august = buildReport("2026-08", data, DEFAULT_SETTINGS, "2026-08-01");
+  const december = buildReport("2025-12", data, DEFAULT_SETTINGS, "2026-08-01");
+
+  check("juli-omzet = pakket + inform van juli", july.revenue.month, 695);
+  check("augustus-omzet telt juli niet mee", august.revenue.month, 710);
+  check("maandgrens: 31 juli hoort bij juli", july.revenue.month - 45, 650);
+  check("jaaromzet 2026 telt 2025 niet mee", august.revenue.year, 1405);
+  check("vorig jaar heeft eigen jaartotaal", december.revenue.year, 650);
+  check("jaar volgt de gekozen maand", december.year, 2025);
+  check("nieuwe klanten in juli", july.clients.newInMonth.length, 1);
+  check("nieuwe klanten in augustus", august.clients.newInMonth.length, 1);
+  check("actieve klanten staan los van de maand", july.clients.active, 2);
+  check("gepauzeerd en stopgezet apart geteld", [july.clients.paused, july.clients.stopped], [1, 1]);
+  check("sessies in augustus", august.sessions.month, 2);
+  check("sessies per type in augustus", august.sessions.byType, { Solo: 1, Duo: 1 });
+  check("sessies dit jaar", august.sessions.year, 3);
+  check("gemiddelde maandomzet = jaar / 8 maanden", Math.round(august.revenue.averageMonth), 176);
+  check("geschatte jaaromzet = gemiddelde x 12", Math.round(august.revenue.projectedYear), 2108);
+  check("niets ontvangen zonder betaaldatum", august.revenue.receivedMonth, 0);
+  check("openstaand telt onbetaalde verkopen", august.outstanding, 0);
+}
 
 console.log(`\n${failures === 0 ? "Alles in orde." : `${failures} test(s) gefaald.`}`);
 console.log(`(gedraaid op ${toIso(new Date())})`);

@@ -58,6 +58,41 @@ export function monthKey(s: IsoDate): string {
   return s.slice(0, 7);
 }
 
+/** "2026-08" for the month containing `d`. */
+export function currentMonthKey(d = new Date()): string {
+  return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, "0")}`;
+}
+
+/** Steps a month key forward or back, rolling over the year. */
+export function shiftMonthKey(key: string, delta: number): string {
+  const [y, m] = key.split("-").map(Number);
+  const d = new Date(y, m - 1 + delta, 1);
+  return currentMonthKey(d);
+}
+
+/** Inclusive first and last day of a month key. */
+export function monthRange(key: string): { start: IsoDate; end: IsoDate } {
+  const [y, m] = key.split("-").map(Number);
+  return { start: `${key}-01`, end: toIso(new Date(y, m, 0)) };
+}
+
+export function yearOfMonthKey(key: string): number {
+  return Number(key.slice(0, 4));
+}
+
+/** Inclusive first and last day of a year. */
+export function yearRange(year: number): { start: IsoDate; end: IsoDate } {
+  return { start: `${year}-01-01`, end: `${year}-12-31` };
+}
+
+/** How many months of `year` have started as of `asOf`. 1–12. */
+export function monthsElapsed(year: number, asOf: IsoDate): number {
+  const currentYear = Number(asOf.slice(0, 4));
+  if (year < currentYear) return 12;
+  if (year > currentYear) return 0;
+  return Number(asOf.slice(5, 7));
+}
+
 const NL_MONTHS = [
   "januari", "februari", "maart", "april", "mei", "juni",
   "juli", "augustus", "september", "oktober", "november", "december",
