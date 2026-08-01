@@ -4,11 +4,11 @@ import { exportBackup, importBackup } from "../domain/backup";
 import { EXPORTS, exportCsv } from "../domain/csv";
 
 const LINKS = [
-  { to: "/leads", title: "Leads", sub: "Potentiële klanten opvolgen" },
-  { to: "/verkopen", title: "Verkopen", sub: "Pakketten en losse sessies registreren" },
-  { to: "/inform", title: "IN FORM", sub: "Uren loggen en maandelijks factureren" },
-  { to: "/prijzen", title: "Prijzen", sub: "Prijstabel en uurtarieven" },
-  { to: "/instellingen", title: "Instellingen", sub: "Bedrijfsgegevens, facturatie, grenzen" },
+  { to: "/coach/opvolging", title: "Leads", sub: "Potentiële klanten opvolgen" },
+  { to: "/business/verkopen", title: "Verkopen", sub: "Pakketten en losse sessies registreren" },
+  { to: "/business/inform", title: "IN FORM", sub: "Uren loggen en maandelijks factureren" },
+  { to: "/business/prijzen", title: "Prijzen", sub: "Prijstabel en uurtarieven" },
+  { to: "/business/instellingen", title: "Instellingen", sub: "Bedrijfsgegevens, facturatie, grenzen" },
 ];
 
 export default function More() {

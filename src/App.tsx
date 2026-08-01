@@ -1,9 +1,7 @@
-import { NavLink, Route, Routes } from "react-router-dom";
+import { NavLink, Navigate, Route, Routes, useLocation, useNavigate } from "react-router-dom";
 import Dashboard from "./pages/Dashboard";
 import Clients from "./pages/Clients";
 import ClientDetail from "./pages/ClientDetail";
-import Leads from "./pages/Leads";
-import LockGate from "./components/LockScreen";
 import Sessions from "./pages/Sessions";
 import Transactions from "./pages/Transactions";
 import Inform from "./pages/Inform";
@@ -11,14 +9,13 @@ import Invoices from "./pages/Invoices";
 import More from "./pages/More";
 import Prices from "./pages/Prices";
 import SettingsPage from "./pages/Settings";
-
-const icons = {
-  home: "M3 10.5 12 3l9 7.5V21H3z",
-  users: "M16 20v-2a4 4 0 0 0-4-4H6a4 4 0 0 0-4 4v2M9 10a4 4 0 1 0 0-8 4 4 0 0 0 0 8m13 10v-2a4 4 0 0 0-3-3.87",
-  calendar: "M3 9h18M7 3v3m10-3v3M4 6h16a1 1 0 0 1 1 1v13a1 1 0 0 1-1 1H4a1 1 0 0 1-1-1V7a1 1 0 0 1 1-1z",
-  invoice: "M6 2h9l5 5v15H6zM14 2v6h6M9 13h7M9 17h5",
-  more: "M4 6h16M4 12h16M4 18h16",
-};
+import Leads from "./pages/Leads";
+import Credits from "./pages/Credits";
+import Planning from "./pages/Planning";
+import Programmes from "./pages/Programmes";
+import Evaluations from "./pages/Evaluations";
+import LockGate from "./components/LockScreen";
+import { NAV, PORTALS, portalOf, portalsFor, type Portal } from "./portals";
 
 function Icon({ d }: { d: string }) {
   return (
@@ -27,14 +24,6 @@ function Icon({ d }: { d: string }) {
     </svg>
   );
 }
-
-const TABS = [
-  { to: "/", label: "Start", icon: icons.home, end: true },
-  { to: "/klanten", label: "Klanten", icon: icons.users },
-  { to: "/sessies", label: "Sessies", icon: icons.calendar },
-  { to: "/facturen", label: "Facturen", icon: icons.invoice },
-  { to: "/meer", label: "Meer", icon: icons.more },
-];
 
 export default function App() {
   return (
@@ -45,31 +34,85 @@ export default function App() {
 }
 
 function Shell() {
+  const location = useLocation();
+  const navigate = useNavigate();
+
+  // Until Supabase auth lands, everyone on this device is the coach — it is
+  // his own phone. The client portal is reachable for preview.
+  const role = "coach" as const;
+  const available = portalsFor(role);
+  const portal = portalOf(location.pathname);
+  const items = NAV[portal];
+
   return (
     <div className="app">
       <nav className="nav">
-        {TABS.map((t) => (
-          <NavLink key={t.to} to={t.to} end={t.end}>
+        {items.map((t) => (
+          <NavLink key={t.to} to={t.to} end={t.to === `/${portal}` || t.to === "/coach" || t.to === "/mij"}>
             <Icon d={t.icon} />
             <span>{t.label}</span>
           </NavLink>
         ))}
       </nav>
+
       <main className="main">
+        {available.length > 1 && (
+          <div className="portalbar">
+            {available.map((p) => (
+              <button
+                key={p}
+                className={p === portal ? "on" : ""}
+                onClick={() => navigate(PORTALS[p].home)}
+              >
+                {PORTALS[p].label}
+              </button>
+            ))}
+          </div>
+        )}
+
         <Routes>
-          <Route path="/" element={<Dashboard />} />
-          <Route path="/klanten" element={<Clients />} />
-          <Route path="/klanten/:id" element={<ClientDetail />} />
-          <Route path="/leads" element={<Leads />} />
-          <Route path="/sessies" element={<Sessions />} />
-          <Route path="/verkopen" element={<Transactions />} />
-          <Route path="/inform" element={<Inform />} />
-          <Route path="/facturen" element={<Invoices />} />
-          <Route path="/prijzen" element={<Prices />} />
-          <Route path="/instellingen" element={<SettingsPage />} />
-          <Route path="/meer" element={<More />} />
+          {/* Coach — the training relationship */}
+          <Route path="/coach" element={<Clients />} />
+          <Route path="/coach/klanten/:id" element={<ClientDetail />} />
+          <Route path="/coach/programmas" element={<Programmes />} />
+          <Route path="/coach/evaluaties" element={<Evaluations />} />
+          <Route path="/coach/opvolging" element={<Leads />} />
+
+          {/* Business — the company */}
+          <Route path="/business" element={<Dashboard />} />
+          <Route path="/business/planning" element={<Planning />} />
+          <Route path="/business/credits" element={<Credits />} />
+          <Route path="/business/verkopen" element={<Transactions />} />
+          <Route path="/business/sessies" element={<Sessions />} />
+          <Route path="/business/inform" element={<Inform />} />
+          <Route path="/business/facturen" element={<Invoices />} />
+          <Route path="/business/prijzen" element={<Prices />} />
+          <Route path="/business/instellingen" element={<SettingsPage />} />
+          <Route path="/business/meer" element={<More />} />
+
+          {/* Old links from before the split. */}
+          <Route path="/" element={<Navigate to="/business" replace />} />
+          <Route path="/klanten" element={<Navigate to="/coach" replace />} />
+          <Route path="/klanten/:id" element={<LegacyClient />} />
+          <Route path="/sessies" element={<Navigate to="/business/sessies" replace />} />
+          <Route path="/verkopen" element={<Navigate to="/business/verkopen" replace />} />
+          <Route path="/inform" element={<Navigate to="/business/inform" replace />} />
+          <Route path="/facturen" element={<Navigate to="/business/facturen" replace />} />
+          <Route path="/prijzen" element={<Navigate to="/business/prijzen" replace />} />
+          <Route path="/instellingen" element={<Navigate to="/business/instellingen" replace />} />
+          <Route path="/leads" element={<Navigate to="/coach/opvolging" replace />} />
+          <Route path="/meer" element={<Navigate to="/business/meer" replace />} />
+          <Route path="*" element={<Navigate to="/business" replace />} />
         </Routes>
       </main>
     </div>
   );
 }
+
+/** Keeps deep links to a client working after the move under /coach. */
+function LegacyClient() {
+  const { pathname } = useLocation();
+  return <Navigate to={pathname.replace("/klanten/", "/coach/klanten/")} replace />;
+}
+
+export type { Portal };

@@ -43,7 +43,7 @@ export default function Clients() {
       ) : (
         <div className="list">
           {[...active, ...rest].map((o) => (
-            <Link key={o.client.id} to={`/klanten/${o.client.id}`}>
+            <Link key={o.client.id} to={`/coach/klanten/${o.client.id}`}>
               <div>
                 <div className="item-title">{o.client.name}</div>
                 <div className="item-sub">

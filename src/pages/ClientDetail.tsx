@@ -44,7 +44,7 @@ export default function ClientDetail() {
       await db.sessions.where("clientId").equals(clientId).delete();
       await db.transactions.where("clientId").equals(clientId).delete();
     });
-    navigate("/klanten");
+    navigate("/coach");
   }
 
   return (

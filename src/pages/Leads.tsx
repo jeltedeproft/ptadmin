@@ -141,7 +141,7 @@ function LeadModal({ lead, onClose }: { lead?: Lead; onClose: () => void }) {
       followUpOn: undefined,
     });
     onClose();
-    navigate(`/klanten/${clientId}`);
+    navigate(`/coach/klanten/${clientId}`);
   }
 
   async function remove() {

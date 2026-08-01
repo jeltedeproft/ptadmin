@@ -82,7 +82,7 @@ export default function Dashboard() {
       </div>
 
       {!settings.businessName && (
-        <Link to="/instellingen" className="alert" style={linkAlert}>
+        <Link to="/business/instellingen" className="alert" style={linkAlert}>
           <strong>Vul je bedrijfsgegevens in</strong> — naam, adres en IBAN zijn nodig voor je facturen.
         </Link>
       )}
@@ -270,7 +270,7 @@ function Actions({
 
   // Money already late — the top of the list, always.
   for (const i of overdueInvoices) {
-    add(`inv-${i.id}`, "/facturen", "nu", (
+    add(`inv-${i.id}`, "/business/facturen", "nu", (
       <>
         <strong>Factuur {i.number} is te laat</strong> — {formatEuro(i.amount)}, verviel{" "}
         {formatDateShort(i.dueDate)}
@@ -278,7 +278,7 @@ function Actions({
     ));
   }
   if (unpaidTransactions.length > 0) {
-    add("unpaid", "/verkopen", "nu", (
+    add("unpaid", "/business/verkopen", "nu", (
       <>
         <strong>
           {unpaidTransactions.length} onbetaalde verkoop{unpaidTransactions.length === 1 ? "" : "en"}
@@ -288,14 +288,14 @@ function Actions({
     ));
   }
   for (const o of clients.needsPack) {
-    add(`pack-${o.client.id}`, `/klanten/${o.client.id}`, "nu", (
+    add(`pack-${o.client.id}`, `/coach/klanten/${o.client.id}`, "nu", (
       <>
         <strong>{o.client.name}</strong> — nieuw pakket nodig
       </>
     ));
   }
   for (const l of leadsDue) {
-    add(`lead-${l.id}`, "/leads", "nu", (
+    add(`lead-${l.id}`, "/coach/opvolging", "nu", (
       <>
         <strong>{l.name}</strong> — lead opvolgen ({l.status.toLowerCase()})
       </>
@@ -303,7 +303,7 @@ function Actions({
   }
 
   for (const o of clients.expiringPacks) {
-    add(`exp-${o.client.id}`, `/klanten/${o.client.id}`, "binnenkort", (
+    add(`exp-${o.client.id}`, `/coach/klanten/${o.client.id}`, "binnenkort", (
       <>
         <strong>{o.client.name}</strong> — {o.ledger.available} credits vervallen op{" "}
         {formatDateShort(o.ledger.nextExpiry)}
@@ -311,7 +311,7 @@ function Actions({
     ));
   }
   for (const o of clients.lowCredits) {
-    add(`low-${o.client.id}`, `/klanten/${o.client.id}`, "binnenkort", (
+    add(`low-${o.client.id}`, `/coach/klanten/${o.client.id}`, "binnenkort", (
       <>
         <strong>{o.client.name}</strong> — nog {o.ledger.available} credit
         {o.ledger.available === 1 ? "" : "s"}
@@ -319,21 +319,21 @@ function Actions({
     ));
   }
   for (const o of clients.inactive) {
-    add(`inact-${o.client.id}`, `/klanten/${o.client.id}`, "binnenkort", (
+    add(`inact-${o.client.id}`, `/coach/klanten/${o.client.id}`, "binnenkort", (
       <>
         <strong>{o.client.name}</strong> — al {settings.inactiveDays}+ dagen niet getraind
       </>
     ));
   }
   for (const o of clients.evaluationsSoon) {
-    add(`ev-${o.client.id}`, `/klanten/${o.client.id}`, "binnenkort", (
+    add(`ev-${o.client.id}`, `/coach/klanten/${o.client.id}`, "binnenkort", (
       <>
         <strong>{o.client.name}</strong> — evaluatie op {formatDateShort(o.client.nextEvaluation)}
       </>
     ));
   }
   if (uninvoicedInform.length > 0) {
-    add("inform", "/inform", "binnenkort", (
+    add("inform", "/business/inform", "binnenkort", (
       <>
         <strong>{uninvoicedInform.length} IN FORM-uren nog niet gefactureerd</strong> —{" "}
         {formatEuro(uninvoicedInform.reduce((s, e) => s + e.amount, 0))}
@@ -341,7 +341,7 @@ function Actions({
     ));
   }
   for (const i of unsentInvoices) {
-    add(`send-${i.id}`, "/facturen", "binnenkort", (
+    add(`send-${i.id}`, "/business/facturen", "binnenkort", (
       <>
         <strong>Factuur {i.number}</strong> is gemaakt maar nog niet verstuurd
       </>
