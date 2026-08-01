@@ -50,6 +50,9 @@ export type IsoDate = string;
 export interface Client {
   id?: number;
   name: string;
+  /** Who the invoice is addressed to, when that differs from the person —
+   *  a client's company rather than their own name. Falls back to `name`. */
+  billingName?: string;
   birthDate?: IsoDate;
   status: ClientStatus;
   startDate: IsoDate;
@@ -93,6 +96,12 @@ export interface Transaction {
   paidOn?: IsoDate;
   invoiceNeeded: boolean;
   invoiceNumber?: string;
+  /**
+   * Losse sessies only (mogelijkheid B): the one session this purchase pays
+   * for. A loose sale is tied to its session and never joins the free credit
+   * balance. Left empty until the session is logged.
+   */
+  sessionId?: number;
   note?: string;
 }
 
@@ -123,6 +132,8 @@ export interface InformEntry {
 
 export interface InvoiceLine {
   description: string;
+  quantity: number;
+  unitPrice: number;
   amount: number;
 }
 
@@ -137,6 +148,8 @@ export interface Invoice {
   recipientAddress?: string;
   recipientEmail?: string;
   lines: InvoiceLine[];
+  /** Always 0 under the art. 56bis exemption, but stored so the line is explicit. */
+  vatAmount: number;
   amount: number;
   status: InvoiceStatus;
   paidOn?: IsoDate;
@@ -152,8 +165,13 @@ export interface Settings {
   tradeName: string;
   address: string;
   companyNumber: string;
+  /** BTW-nummer as printed on the invoice, e.g. "BE0123.456.789". */
+  vatNumber: string;
   iban: string;
   email: string;
+  phone: string;
+  /** Logo for the invoice header, stored as a data: URI. Falls back to the trade name. */
+  logoDataUrl?: string;
   paymentTermDays: number;
   nextInvoiceNumber: string;
   vatNote: string;
@@ -177,4 +195,6 @@ export interface Settings {
   packExpiryWarningDays: number;
   /** Days ahead to look when listing upcoming evaluations. */
   evaluationLookaheadDays: number;
+  /** Flag a client who has not trained for this many days. */
+  inactiveDays: number;
 }

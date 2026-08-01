@@ -47,7 +47,12 @@ export default function Transactions() {
                   {nameOf(t.clientId)} — {formatEuro(t.amount)}
                 </div>
                 <div className="item-sub">
-                  {formatDateShort(t.date)} · {t.productCode} · {t.creditsBought} credits
+                  {formatDateShort(t.date)} · {t.productCode} ·{" "}
+                  {t.product === "Losse sessie"
+                    ? t.sessionId
+                      ? "losse sessie, gegeven"
+                      : "losse sessie, nog te geven"
+                    : `${t.creditsBought} credits`}
                   {t.expiresOn ? ` · vervalt ${formatDateShort(t.expiresOn)}` : ""}
                 </div>
               </div>
@@ -149,9 +154,19 @@ export function TransactionModal({ clientId, onClose }: { clientId?: number; onC
 
       {price ? (
         <div className="alert" style={{ marginBottom: 12, borderLeftColor: "var(--accent)" }}>
-          <strong>{price.code}</strong> — {formatEuro(price.amount)} voor {price.credits} credit
-          {price.credits === 1 ? "" : "s"}
-          {expiresOn ? `, geldig tot ${formatDateShort(expiresOn)}` : ", geen vervaldatum"}.
+          <strong>{price.code}</strong> — {formatEuro(price.amount)}
+          {product === "Losse sessie" ? (
+            <>
+              {" "}
+              voor één training. Een losse sessie hoort bij één specifieke training en komt niet in het
+              vrije creditsaldo — ze wordt vanzelf gekoppeld zodra je de sessie logt.
+            </>
+          ) : (
+            <>
+              {" "}
+              voor {price.credits} credits, geldig tot {formatDateShort(expiresOn)}.
+            </>
+          )}
         </div>
       ) : (
         <div className="alert crit" style={{ marginBottom: 12 }}>

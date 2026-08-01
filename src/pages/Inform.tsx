@@ -27,6 +27,17 @@ export default function Inform() {
     const amount = rows.reduce((sum, e) => sum + e.amount, 0);
     const date = today();
 
+    // One line per training type, not per session: "12 uur individuele
+    // personal training × €45". Client names stay internal on IN FORM invoices.
+    const grouped = new Map<string, { hours: number; rate: number; amount: number }>();
+    for (const e of rows) {
+      const key = `${e.sessionType}|${e.hourlyRate}`;
+      const g = grouped.get(key) ?? { hours: 0, rate: e.hourlyRate, amount: 0 };
+      g.hours += e.hours;
+      g.amount += e.amount;
+      grouped.set(key, g);
+    }
+
     const invoice: Invoice = {
       number: s.nextInvoiceNumber,
       date,
@@ -35,10 +46,13 @@ export default function Inform() {
       recipientName: s.informName,
       recipientAddress: s.informAddress,
       recipientEmail: s.informEmail,
-      lines: rows.map((e) => ({
-        description: `${e.sessionType}${e.clientOrGroup ? ` — ${e.clientOrGroup}` : ""} · ${formatDateShort(e.date)} · ${e.hours} u × ${formatEuro(e.hourlyRate)}`,
-        amount: e.amount,
+      lines: [...grouped.entries()].map(([key, g]) => ({
+        description: `${key.split("|")[0]} — ${formatMonth(monthKey(rows[0].date))}`,
+        quantity: g.hours,
+        unitPrice: g.rate,
+        amount: g.amount,
       })),
+      vatAmount: 0,
       amount,
       status: "Concept",
       sourceType: "inform",

@@ -9,3 +9,7 @@ tsconfig.tsbuildinfo
 
 # Contains real client contact details — never commit.
 data/
+
+# Yens' specificatie en de voorbeeldfactuur: bevatten rekeningnummer,
+# telefoonnummer en klantgegevens. Lokaal houden.
+docs/

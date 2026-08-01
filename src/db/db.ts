@@ -36,6 +36,27 @@ export class PtAdminDb extends Dexie {
 export const db = new PtAdminDb();
 
 /**
+ * Brings records written by an older version of the app up to the current
+ * shape. Invoices gained per-line quantity/rate and an explicit VAT amount,
+ * so anything stored before that needs filling in. Idempotent.
+ */
+async function migrateRecords(): Promise<void> {
+  const invoices = await db.invoices.toArray();
+  for (const inv of invoices) {
+    const needsLines = inv.lines.some((l) => l.quantity === undefined);
+    if (!needsLines && inv.vatAmount !== undefined) continue;
+    await db.invoices.update(inv.id!, {
+      lines: inv.lines.map((l) => ({
+        ...l,
+        quantity: l.quantity ?? 1,
+        unitPrice: l.unitPrice ?? l.amount,
+      })),
+      vatAmount: inv.vatAmount ?? 0,
+    });
+  }
+}
+
+/**
  * Populates the price matrix and settings on first run, and back-fills any
  * product codes added since the install was created. Existing rows are left
  * alone so edits made on the Prijzen screen survive. Safe to call repeatedly.
@@ -47,10 +68,21 @@ export async function ensureSeeded(): Promise<void> {
     if (missing.length > 0) {
       await db.prices.bulkAdd(missing);
     }
-    if (!(await db.settings.get(1))) {
+    const settings = await db.settings.get(1);
+    if (!settings) {
       await db.settings.add(DEFAULT_SETTINGS);
+    } else {
+      // Back-fill keys added after this install was created, without touching
+      // anything the user has already set.
+      const missing = Object.fromEntries(
+        Object.entries(DEFAULT_SETTINGS).filter(([k]) => !(k in settings)),
+      );
+      if (Object.keys(missing).length > 0) {
+        await db.settings.update(1, missing);
+      }
     }
   });
+  await migrateRecords();
 }
 
 export async function getSettings(): Promise<Settings> {

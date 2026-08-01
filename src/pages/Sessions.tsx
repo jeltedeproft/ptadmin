@@ -10,7 +10,7 @@ import {
   type SessionStatus,
   type SessionType,
 } from "../db/schema";
-import { bucketOf, isChargeable } from "../domain/credits";
+import { bucketOf, isChargeable, isLooseSale, looseAvailableIn } from "../domain/credits";
 import { formatDateShort, today } from "../domain/dates";
 import { useClients, useOverview, useSessions } from "../hooks/useData";
 
@@ -86,11 +86,29 @@ export function SessionModal({ clientId, onClose }: { clientId?: number; onClose
   const selected = overview?.find((o) => o.client.id === form.clientId);
   const bucket = bucketOf(form.location, form.sessionType);
   const availableHere = selected?.ledger.availableByBucket.get(bucket) ?? 0;
+  const looseHere = selected ? looseAvailableIn(selected.ledger, bucket) : 0;
   const willCharge = isChargeable(form.status);
 
   async function save() {
     if (!form.clientId) return;
-    await db.sessions.add(form);
+    await db.transaction("rw", [db.sessions, db.transactions], async () => {
+      const sessionId = await db.sessions.add(form);
+      if (!isChargeable(form.status) || availableHere > 0) return;
+
+      // Mogelijkheid B: a losse sessie pays for one specific session, so book
+      // it against this one rather than leaving it floating as free credit.
+      const candidates = await db.transactions.where("clientId").equals(form.clientId).toArray();
+      const loose = candidates
+        .filter(
+          (t) =>
+            isLooseSale(t) &&
+            !t.sessionId &&
+            t.date <= form.date &&
+            bucketOf(t.location, t.sessionType) === bucket,
+        )
+        .sort((a, b) => a.date.localeCompare(b.date))[0];
+      if (loose) await db.transactions.update(loose.id!, { sessionId });
+    });
     onClose();
   }
 
@@ -129,13 +147,21 @@ export function SessionModal({ clientId, onClose }: { clientId?: number; onClose
       </Field>
 
       {form.clientId > 0 && (
-        <div className={`alert${willCharge && availableHere === 0 ? " crit" : ""}`} style={{ marginBottom: 12 }}>
+        <div
+          className={`alert${willCharge && availableHere === 0 && looseHere === 0 ? " crit" : ""}`}
+          style={{ marginBottom: 12 }}
+        >
           {!willCharge ? (
             <>Deze status kost geen credit.</>
           ) : availableHere > 0 ? (
             <>
               Kost 1 credit · {availableHere} beschikbaar voor {form.sessionType} / {form.location} →{" "}
               {availableHere - 1} over.
+            </>
+          ) : looseHere > 0 ? (
+            <>
+              Gedekt door een betaalde losse sessie · daarna nog {looseHere - 1} losse sessie
+              {looseHere - 1 === 1 ? "" : "s"} tegoed.
             </>
           ) : (
             <>

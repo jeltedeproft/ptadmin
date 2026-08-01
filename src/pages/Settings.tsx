@@ -45,13 +45,53 @@ export default function SettingsPage() {
         <Field label="Ondernemingsnummer">
           <input value={form.companyNumber} onChange={(e) => set("companyNumber", e.target.value)} />
         </Field>
-        <Field label="IBAN">
-          <input value={form.iban} onChange={(e) => set("iban", e.target.value)} />
+        <Field label="BTW-nummer (op factuur)">
+          <input
+            placeholder="BE0123.456.789"
+            value={form.vatNumber}
+            onChange={(e) => set("vatNumber", e.target.value)}
+          />
         </Field>
       </div>
-      <Field label="E-mail">
-        <input type="email" value={form.email} onChange={(e) => set("email", e.target.value)} />
+      <Field label="IBAN">
+        <input value={form.iban} onChange={(e) => set("iban", e.target.value)} />
       </Field>
+      <div className="fields-2">
+        <Field label="E-mail">
+          <input type="email" value={form.email} onChange={(e) => set("email", e.target.value)} />
+        </Field>
+        <Field label="Telefoon">
+          <input type="tel" value={form.phone} onChange={(e) => set("phone", e.target.value)} />
+        </Field>
+      </div>
+
+      <Field label="Logo op de factuur">
+        <input
+          type="file"
+          accept="image/png,image/jpeg"
+          onChange={(e) => {
+            const file = e.target.files?.[0];
+            if (!file) return;
+            const reader = new FileReader();
+            reader.onload = () => set("logoDataUrl", String(reader.result));
+            reader.readAsDataURL(file);
+          }}
+        />
+      </Field>
+      {form.logoDataUrl ? (
+        <div className="row" style={{ marginBottom: 12 }}>
+          <img
+            src={form.logoDataUrl}
+            alt="Logo"
+            style={{ maxHeight: 46, maxWidth: 160, background: "#fff", padding: 6, borderRadius: 8 }}
+          />
+          <button className="btn-sm btn-danger" onClick={() => set("logoDataUrl", undefined)}>
+            Verwijder
+          </button>
+        </div>
+      ) : (
+        <p className="sub">Zonder logo staat je handelsnaam als woordmerk bovenaan de factuur.</p>
+      )}
 
       <h2>Facturatie</h2>
       <div className="fields-2">
@@ -120,6 +160,9 @@ export default function SettingsPage() {
           <input type="number" value={form.evaluationLookaheadDays} onChange={num("evaluationLookaheadDays")} />
         </Field>
       </div>
+      <Field label="Signaleer na x dagen zonder training">
+        <input type="number" value={form.inactiveDays} onChange={num("inactiveDays")} />
+      </Field>
 
       <button className="btn-primary btn-block" style={{ marginTop: 18 }} onClick={save}>
         {saved ? "Opgeslagen ✓" : "Opslaan"}

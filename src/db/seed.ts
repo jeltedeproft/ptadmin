@@ -46,11 +46,14 @@ export const DEFAULT_SETTINGS: Settings = {
   tradeName: "",
   address: "",
   companyNumber: "",
+  vatNumber: "",
   iban: "",
   email: "",
+  phone: "",
   paymentTermDays: 14,
   nextInvoiceNumber: "2026-001",
-  vatNote: "Vrijgesteld van btw volgens artikel 56bis",
+  vatNote:
+    "Bijzondere vrijstellingsregeling voor kleine ondernemingen. Btw niet van toepassing (art. 56bis W.BTW).",
 
   informName: "",
   informAddress: "",
@@ -69,4 +72,5 @@ export const DEFAULT_SETTINGS: Settings = {
 
   packExpiryWarningDays: 30,
   evaluationLookaheadDays: 14,
+  inactiveDays: 30,
 };

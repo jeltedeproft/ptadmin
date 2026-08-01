@@ -60,7 +60,12 @@ export default function Dashboard() {
       o.ledger.nextExpiry &&
       daysBetween(now, o.ledger.nextExpiry) <= settings.packExpiryWarningDays,
   );
-  const outOfCredits = overview.filter((o) => o.client.status === "Actief" && o.ledger.available === 0);
+  // Only clients who actually work in packs — someone who buys single sessions
+  // sits at zero credits by design and should not be nagged about it.
+  const outOfCredits = overview.filter(
+    (o) => o.client.status === "Actief" && (o.signal === "op" || o.signal === "verlopen"),
+  );
+  const inactive = overview.filter((o) => o.client.status === "Actief" && o.signal === "inactief");
   const evaluationsDue = overview.filter(
     (o) =>
       o.client.nextEvaluation &&
@@ -142,6 +147,11 @@ export default function Dashboard() {
             <strong>{o.client.name}</strong> — {SIGNAL_LABEL[o.signal].toLowerCase()}, tijd voor een nieuw pakket
           </Link>
         ))}
+        {inactive.map((o) => (
+          <Link key={`inact-${o.client.id}`} to={`/klanten/${o.client.id}`} className="alert" style={{ textDecoration: "none", color: "inherit", display: "block" }}>
+            <strong>{o.client.name}</strong> — al {settings.inactiveDays}+ dagen niet getraind
+          </Link>
+        ))}
         {evaluationsDue.map((o) => (
           <Link key={`ev-${o.client.id}`} to={`/klanten/${o.client.id}`} className="alert" style={{ textDecoration: "none", color: "inherit", display: "block" }}>
             <strong>{o.client.name}</strong> — evaluatie gepland op {formatDateShort(o.client.nextEvaluation)}
@@ -161,6 +171,7 @@ export default function Dashboard() {
         )}
         {expiringSoon.length === 0 &&
           outOfCredits.length === 0 &&
+          inactive.length === 0 &&
           evaluationsDue.length === 0 &&
           unpaid.length === 0 &&
           uninvoicedInform.length === 0 && <Empty>Niets dat je aandacht vraagt. 🎉</Empty>}

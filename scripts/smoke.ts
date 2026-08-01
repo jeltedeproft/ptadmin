@@ -58,6 +58,21 @@ const pack = (id: number, date: string, months: number, credits = 10): Transacti
   paid: true,
   invoiceNeeded: false,
 });
+const loose = (id: number, date: string, sessionId?: number): Transaction => ({
+  id,
+  date,
+  clientId: 1,
+  location: "Privéruimte",
+  sessionType: "Solo",
+  product: "Losse sessie",
+  productCode: "PR-SOLO-LOS",
+  creditsBought: 1,
+  amount: 70,
+  validityMonths: 0,
+  paid: true,
+  invoiceNeeded: false,
+  sessionId,
+});
 const sess = (id: number, date: string, status: Session["status"] = "Uitgevoerd", type: Session["sessionType"] = "Solo"): Session => ({
   id,
   date,
@@ -104,8 +119,52 @@ const beforePurchase = buildLedger([pack(1, "2026-02-10", 4)], [sess(1, "2026-01
 check("sessie vóór aankoop is niet gedekt", beforePurchase.uncoveredSessionIds, [1]);
 check("pakket blijft vol", beforePurchase.available, 10);
 
-check("signaal bij weinig credits", signalFor(buildLedger([pack(1, "2026-07-01", 4, 2)], [], "2026-07-05"), "2026-07-04", 30), "laag");
-check("signaal bij lege teller", signalFor(buildLedger([], [], "2026-07-05"), undefined, 30), "op");
+const SIG = { packExpiryWarningDays: 30, inactiveDays: 30 };
+check("signaal bij weinig credits", signalFor(buildLedger([pack(1, "2026-07-01", 4, 2)], [], "2026-07-05"), "2026-07-04", SIG, "2026-07-05"), "laag");
+check("signaal bij lege teller", signalFor(buildLedger([], [], "2026-07-05"), undefined, SIG, "2026-07-05"), "op");
+check("signaal bij lang niet getraind", signalFor(buildLedger([pack(1, "2026-01-01", 12)], [], "2026-07-05"), "2026-04-01", SIG, "2026-07-05"), "inactief");
+
+// ---------- losse sessies: mogelijkheid B ----------
+console.log("\nlosse sessies (mogelijkheid B)");
+
+// The whole point of B: a paid loose session must not look like free credit.
+const looseOnly = buildLedger([loose(1, "2026-03-01")], [], "2026-03-02");
+check("losse sessie telt niet als creditsaldo", looseOnly.available, 0);
+check("losse sessie staat apart als nog te geven", looseOnly.looseUnused, 1);
+check("losse sessie geeft geen vervaldatum", looseOnly.nextExpiry, undefined);
+check("geen pakket-signaal voor losse-sessieklant", signalFor(looseOnly, undefined, SIG, "2026-03-02"), "ok");
+
+const looseUsed = buildLedger([loose(1, "2026-03-01")], [sess(1, "2026-03-02")], "2026-03-03");
+check("losse sessie dekt de training", looseUsed.uncoveredSessionIds, []);
+check("na gebruik niets meer tegoed", looseUsed.looseUnused, 0);
+check("creditsaldo blijft nul", looseUsed.available, 0);
+
+// An explicit booking must win over date order.
+const looseLinked = buildLedger(
+  [loose(1, "2026-03-01", 7)],
+  [sess(7, "2026-03-05"), sess(8, "2026-03-02")],
+  "2026-03-06",
+);
+check("expliciet gekoppelde sessie is gedekt", looseLinked.uncoveredSessionIds, [8]);
+
+// Packs expire, loose sales do not — so the pack must drain first.
+const mixed = buildLedger(
+  [pack(1, "2026-03-01", 4, 1), loose(2, "2026-03-01")],
+  [sess(1, "2026-03-10"), sess(2, "2026-03-11")],
+  "2026-03-12",
+);
+check("pakket gaat voor op losse sessie", mixed.packs[0].remaining, 0);
+check("beide sessies gedekt", mixed.uncoveredSessionIds, []);
+check("losse sessie is opgebruikt", mixed.looseUnused, 0);
+
+// A loose sale bought after the session cannot cover it retroactively.
+const looseLate = buildLedger([loose(1, "2026-03-10")], [sess(1, "2026-03-01")], "2026-03-11");
+check("losse sessie dekt geen eerdere training", looseLate.uncoveredSessionIds, [1]);
+check("blijft tegoed staan", looseLate.looseUnused, 1);
+
+// Buckets apply to loose sales too.
+const looseBucket = buildLedger([loose(1, "2026-03-01")], [sess(1, "2026-03-02", "Uitgevoerd", "Duo")], "2026-03-03");
+check("losse solo dekt geen duo", looseBucket.uncoveredSessionIds, [1]);
 
 // ---------- thresholds ----------
 console.log("\nthresholds");

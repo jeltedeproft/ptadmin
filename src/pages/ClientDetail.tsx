@@ -72,6 +72,13 @@ export default function ClientDetail() {
         <Kpi label="Laatste sessie" value={formatDateShort(lastSession)} small />
       </div>
 
+      {ledger.looseUnused > 0 && (
+        <div className="alert" style={{ marginTop: 12, borderLeftColor: "var(--accent)" }}>
+          {ledger.looseUnused} losse sessie{ledger.looseUnused === 1 ? "" : "s"} betaald en nog niet
+          gegeven. Losse sessies tellen niet mee in het creditsaldo — ze horen bij één specifieke training.
+        </div>
+      )}
+
       {ledger.forfeited > 0 && (
         <div className="alert crit" style={{ marginTop: 12 }}>
           {ledger.forfeited} credit{ledger.forfeited === 1 ? "" : "s"} vervallen zonder gebruikt te zijn.
@@ -103,7 +110,7 @@ export default function ClientDetail() {
 
       <h2>Pakketten</h2>
       {ledger.packs.length === 0 ? (
-        <Empty>Nog geen verkopen.</Empty>
+        <Empty>Nog geen pakketten gekocht.</Empty>
       ) : (
         <div className="list">
           {ledger.packs
@@ -129,6 +136,35 @@ export default function ClientDetail() {
               );
             })}
         </div>
+      )}
+
+      {ledger.looseSales.length > 0 && (
+        <>
+          <h2>Losse sessies</h2>
+          <div className="list">
+            {ledger.looseSales
+              .slice()
+              .reverse()
+              .map((l) => {
+                const t = transactions.find((x) => x.id === l.transactionId);
+                return (
+                  <div key={l.transactionId}>
+                    <div>
+                      <div className="item-title">
+                        {t?.sessionType} · {t?.location}
+                      </div>
+                      <div className="item-sub">
+                        {formatDateShort(l.date)} · {formatEuro(t?.amount ?? 0)}
+                      </div>
+                    </div>
+                    <Badge tone={l.usedBySessionId ? "" : "ok"}>
+                      {l.usedBySessionId ? "Gegeven" : "Nog te geven"}
+                    </Badge>
+                  </div>
+                );
+              })}
+          </div>
+        </>
       )}
 
       <h2>Sessies</h2>
@@ -199,8 +235,19 @@ function EditClientModal({ client, onClose }: { client: Client; onClose: () => v
       <Field label="Telefoon">
         <input type="tel" value={form.phone ?? ""} onChange={(e) => set("phone", e.target.value)} />
       </Field>
+      <Field label="Facturatienaam (indien anders dan de klant)">
+        <input
+          placeholder={form.name}
+          value={form.billingName ?? ""}
+          onChange={(e) => set("billingName", e.target.value)}
+        />
+      </Field>
       <Field label="Facturatieadres">
-        <input value={form.billingAddress ?? ""} onChange={(e) => set("billingAddress", e.target.value)} />
+        <textarea
+          placeholder={"Straat 1\n2000 Stad\nBelgië"}
+          value={form.billingAddress ?? ""}
+          onChange={(e) => set("billingAddress", e.target.value)}
+        />
       </Field>
       <Field label="Ondernemingsnummer">
         <input value={form.companyNumber ?? ""} onChange={(e) => set("companyNumber", e.target.value)} />

@@ -82,19 +82,50 @@ src/
 
 ## Hoe de credits werken
 
-Een verkoop zet geld om in credits met een vervaldatum (4 maanden privéruimte,
+Een pakket zet geld om in credits met een vervaldatum (4 maanden privéruimte,
 6 maanden aan huis). Een sessie verbruikt er één.
 
 - Credits zijn **niet uitwisselbaar**: een pakket Privéruimte/Solo betaalt geen
   Aan huis/Duo-sessie. Elk pakket zit in zijn eigen mandje.
-- Binnen een mandje gaat het **oudste pakket eerst** leeg.
+- Binnen een mandje gaat het **oudste pakket eerst** leeg (FIFO).
 - Een pakket dat al vervallen was op de datum van de sessie telt niet mee. Zo'n
   sessie blijft staan als "niet gedekt" in plaats van stilletjes te verdwijnen.
 
 Welke sessiestatussen een credit kosten staat in `CHARGEABLE_STATUSES`
-(`src/domain/credits.ts`). Nu ingesteld op: *Uitgevoerd*, *Te laat geannuleerd*
-en *Niet verschenen* kosten een credit; *Geannuleerd op tijd* en
-*Niet aangerekend* niet. **Dit is een aanname — nog te bevestigen met Yens.**
+(`src/domain/credits.ts`): *Uitgevoerd*, *Te laat geannuleerd* en
+*Niet verschenen* kosten een credit; *Geannuleerd op tijd* en
+*Niet aangerekend* niet. Bevestigd door Yens.
+
+### Losse sessies — mogelijkheid B
+
+Een losse sessie hoort bij **één specifieke training** en verschijnt niet als
+vrij creditsaldo. Ze wordt automatisch aan een sessie gekoppeld zodra die
+gelogd wordt (`Transaction.sessionId`), en tot dan staat ze als "nog te geven".
+
+Gevolg voor de dekkingsvolgorde per sessie:
+
+1. de losse sessie die expliciet aan deze training gekoppeld is;
+2. anders het oudste nog geldige pakket in hetzelfde mandje;
+3. anders een losse sessie die nog nergens aan hangt.
+
+Pakketten gaan vóór losse sessies omdat pakketten vervallen en losse sessies
+niet. Een klant die enkel losse sessies koopt, staat dus altijd op nul credits
+— dat is geen waarschuwing, en het signaal toont "werkt per losse sessie".
+
+## Facturen
+
+De pdf volgt de huisstijl van de voorbeeldfactuur (lokaal in `docs/`, niet in
+de repo — er staan reken- en klantgegevens op): woordmerk of geüpload logo, een blok
+**Gefactureerd aan** met naam en adres van de klant, een tabel met
+omschrijving / aantal / tarief / bedrag, subtotaal, btw (nvt.) en totaal, de
+art. 56bis-vermelding, en onderaan contact- en betaalgegevens.
+
+De klantnaam staat verplicht op elke factuur. Wanneer er aan een vennootschap
+gefactureerd wordt, vult `billingName` op de klant de naam in die op de factuur
+komt, in plaats van de persoonsnaam.
+
+INFORM-facturen groeperen per trainingstype — "Solo PT · 12 × €45" — en
+vermelden bewust geen klantnamen; die blijven intern.
 
 ## Nog niet gedaan
 

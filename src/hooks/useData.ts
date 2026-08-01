@@ -34,7 +34,10 @@ export function useOverview(): ClientOverview[] | undefined {
       db.sessions.toArray(),
       db.settings.get(1),
     ]);
-    const warningDays = settings?.packExpiryWarningDays ?? 30;
+    const signalOpts = {
+      packExpiryWarningDays: settings?.packExpiryWarningDays ?? 30,
+      inactiveDays: settings?.inactiveDays ?? 30,
+    };
     const asOf = today();
 
     return clients.map((client) => {
@@ -49,7 +52,7 @@ export function useOverview(): ClientOverview[] | undefined {
         ledger,
         lastSession,
         lastPurchase,
-        signal: signalFor(ledger, lastSession, warningDays, asOf),
+        signal: signalFor(ledger, lastSession, signalOpts, asOf),
         sessionCount: chargeable.length,
       };
     });

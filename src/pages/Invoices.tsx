@@ -30,15 +30,20 @@ export default function Invoices() {
       dueDate: addDays(date, s.paymentTermDays),
       type: "Eigen klant",
       clientId: t.clientId,
-      recipientName: client?.name ?? "Onbekend",
+      // The client's name must appear on every invoice; billingName covers the
+      // case where it is addressed to their company instead.
+      recipientName: client?.billingName?.trim() || client?.name || "Onbekend",
       recipientAddress: client?.billingAddress,
       recipientEmail: client?.email,
       lines: [
         {
           description: `${t.product} — ${t.sessionType}, ${t.location} (${t.creditsBought} sessie${t.creditsBought === 1 ? "" : "s"})`,
+          quantity: 1,
+          unitPrice: t.amount,
           amount: t.amount,
         },
       ],
+      vatAmount: 0,
       amount: t.amount,
       status: "Concept",
       sourceType: "transaction",
@@ -175,8 +180,13 @@ function InvoiceModal({ invoice, onClose }: { invoice: Invoice; onClose: () => v
       <div className="list" style={{ marginBottom: 16 }}>
         {invoice.lines.map((l, idx) => (
           <div key={idx}>
-            <div className="item-sub" style={{ marginTop: 0 }}>
-              {l.description}
+            <div>
+              <div className="item-sub" style={{ marginTop: 0 }}>
+                {l.description}
+              </div>
+              <div className="item-sub">
+                {l.quantity} × {formatEuro(l.unitPrice)}
+              </div>
             </div>
             <span>{formatEuro(l.amount)}</span>
           </div>
