@@ -16,6 +16,7 @@ import { nextNumber } from "../src/domain/invoicing";
 import { buildMonthlySeries, buildReport } from "../src/domain/reporting";
 import { barPath, niceMax, ticks } from "../src/components/charts";
 import { toCsv } from "../src/domain/csv";
+import { hashCode, makeSalt, sameHash, verifyCode } from "../src/domain/lock";
 import { DEFAULT_PRICES, DEFAULT_SETTINGS } from "../src/db/seed";
 import type { Client, InformEntry, Session, Transaction } from "../src/db/schema";
 import type { ClientOverview } from "../src/hooks/useData";
@@ -369,6 +370,25 @@ console.log("\ncsv-export");
   check("aanhalingsteken wordt verdubbeld", toCsv(["naam"], [['Jan "JD"']]), 'naam\r\n"Jan ""JD"""');
   check("nieuwe regel blijft binnen één cel", toCsv(["adres"], [["Straat 1\n2000 Stad"]]), 'adres\r\n"Straat 1\n2000 Stad"');
   check("lege waarde blijft leeg", toCsv(["a", "b"], [[undefined, "x"]]), "a;b\r\n;x");
+}
+
+// ---------- toegangscode ----------
+console.log("\ntoegangscode");
+{
+  const salt = makeSalt();
+  check("zout is 32 hextekens", /^[0-9a-f]{32}$/.test(salt), true);
+  check("twee zouten verschillen", makeSalt() === makeSalt(), false);
+
+  const hash = await hashCode("1234", salt);
+  check("hash is 64 hextekens", /^[0-9a-f]{64}$/.test(hash), true);
+  check("de code staat niet in de hash", hash.includes("1234"), false);
+  check("juiste code opent", await verifyCode("1234", salt, hash), true);
+  check("verkeerde code opent niet", await verifyCode("1235", salt, hash), false);
+  check("lege code opent niet", await verifyCode("", salt, hash), false);
+
+  // Same code, different salt must not produce the same hash.
+  check("ander zout geeft andere hash", (await hashCode("1234", makeSalt())) === hash, false);
+  check("vergelijking op lengte", sameHash("abc", "abcd"), false);
 }
 
 console.log(`\n${failures === 0 ? "Alles in orde." : `${failures} test(s) gefaald.`}`);

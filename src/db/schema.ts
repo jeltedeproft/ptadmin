@@ -255,4 +255,10 @@ export interface Settings {
   evaluationLookaheadDays: number;
   /** Flag a client who has not trained for this many days. */
   inactiveDays: number;
+
+  /** Access code. Absent means the app opens without one. See domain/lock.ts. */
+  accessCodeHash?: string;
+  accessCodeSalt?: string;
+  /** Re-ask for the code after this many minutes away from the app. */
+  lockAfterMinutes: number;
 }

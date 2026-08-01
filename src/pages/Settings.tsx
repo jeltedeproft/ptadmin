@@ -3,6 +3,7 @@ import { Empty, Field } from "../components/ui";
 import { db } from "../db/db";
 import type { Settings } from "../db/schema";
 import { useSettings } from "../hooks/useData";
+import { hashCode, makeSalt, markUnlocked } from "../domain/lock";
 
 export default function SettingsPage() {
   const stored = useSettings();
@@ -167,6 +168,85 @@ export default function SettingsPage() {
       <button className="btn-primary btn-block" style={{ marginTop: 18 }} onClick={save}>
         {saved ? "Opgeslagen ✓" : "Opslaan"}
       </button>
+
+      <AccessCode />
+    </>
+  );
+}
+
+function AccessCode() {
+  const settings = useSettings();
+  const [code, setCode] = useState("");
+  const [repeat, setRepeat] = useState("");
+  const [busy, setBusy] = useState("");
+
+  if (!settings) return null;
+  const isSet = !!settings.accessCodeHash;
+
+  async function setNewCode() {
+    if (code.length < 4) {
+      setBusy("Kies een code van minstens 4 tekens.");
+      return;
+    }
+    if (code !== repeat) {
+      setBusy("De twee codes zijn niet gelijk.");
+      return;
+    }
+    const salt = makeSalt();
+    await db.settings.update(1, { accessCodeSalt: salt, accessCodeHash: await hashCode(code, salt) });
+    markUnlocked();
+    setCode("");
+    setRepeat("");
+    setBusy("Toegangscode ingesteld.");
+  }
+
+  async function clearCode() {
+    if (!confirm("Toegangscode verwijderen? De app opent dan meteen.")) return;
+    await db.settings.update(1, { accessCodeHash: undefined, accessCodeSalt: undefined });
+    setBusy("Toegangscode verwijderd.");
+  }
+
+  return (
+    <>
+      <h2>Toegangscode</h2>
+      <p className="sub">
+        Een code beschermt tegen iemand die je gsm of laptop oppakt en de app opent. Ze versleutelt
+        de gegevens niet: wie het toestel heeft en de ontwikkelaarstools opent, kan ze nog steeds
+        lezen. Voor dat laatste zijn de schermvergrendeling en schijfversleuteling van het toestel
+        zelf de juiste bescherming.
+      </p>
+
+      {isSet ? (
+        <>
+          <div className="alert" style={{ marginBottom: 12, borderLeftColor: "var(--ok)" }}>
+            Er staat een toegangscode ingesteld.
+          </div>
+          <Field label="Vergrendel opnieuw na (minuten weg uit de app)">
+            <input
+              type="number"
+              min="1"
+              value={settings.lockAfterMinutes}
+              onChange={(e) => db.settings.update(1, { lockAfterMinutes: Number(e.target.value) })}
+            />
+          </Field>
+          <button className="btn-danger btn-block" onClick={clearCode}>
+            Toegangscode verwijderen
+          </button>
+        </>
+      ) : (
+        <>
+          <Field label="Nieuwe code">
+            <input type="password" inputMode="numeric" value={code} onChange={(e) => setCode(e.target.value)} />
+          </Field>
+          <Field label="Herhaal de code">
+            <input type="password" inputMode="numeric" value={repeat} onChange={(e) => setRepeat(e.target.value)} />
+          </Field>
+          <button className="btn-block" onClick={setNewCode}>
+            Code instellen
+          </button>
+        </>
+      )}
+      {busy && <p className="sub" style={{ marginTop: 10 }}>{busy}</p>}
     </>
   );
 }

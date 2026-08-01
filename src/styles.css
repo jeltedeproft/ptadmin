@@ -497,6 +497,26 @@ button:hover,
 
 /* ---------- misc ---------- */
 
+/* ---------- lock screen ---------- */
+
+.lock {
+  min-height: 100vh;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 20px;
+}
+
+.lock-box {
+  width: 100%;
+  max-width: 320px;
+  text-align: center;
+}
+
+.lock-box h1 {
+  margin-bottom: 6px;
+}
+
 /* ---------- charts ---------- */
 
 .chart {

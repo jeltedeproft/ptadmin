@@ -73,4 +73,5 @@ export const DEFAULT_SETTINGS: Settings = {
   packExpiryWarningDays: 30,
   evaluationLookaheadDays: 14,
   inactiveDays: 30,
+  lockAfterMinutes: 60,
 };

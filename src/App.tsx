@@ -3,6 +3,7 @@ import Dashboard from "./pages/Dashboard";
 import Clients from "./pages/Clients";
 import ClientDetail from "./pages/ClientDetail";
 import Leads from "./pages/Leads";
+import LockGate from "./components/LockScreen";
 import Sessions from "./pages/Sessions";
 import Transactions from "./pages/Transactions";
 import Inform from "./pages/Inform";
@@ -36,6 +37,14 @@ const TABS = [
 ];
 
 export default function App() {
+  return (
+    <LockGate>
+      <Shell />
+    </LockGate>
+  );
+}
+
+function Shell() {
   return (
     <div className="app">
       <nav className="nav">
