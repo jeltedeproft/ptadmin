@@ -129,6 +129,8 @@ export interface Session {
   location: Location;
   sessionType: SessionType;
   status: SessionStatus;
+  /** Shared reference (e.g. "G0041") tying one group training's records together. */
+  groupId?: string;
   note?: string;
 }
 

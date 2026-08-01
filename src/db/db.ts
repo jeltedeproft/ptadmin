@@ -30,6 +30,12 @@ export class PtAdminDb extends Dexie {
       invoices: "++id, &number, date, status, type",
       settings: "id",
     });
+    // Group trainings: sessions of one shared training carry the same groupId.
+    // Prices became versioned, so several records share a baseCode.
+    this.version(2).stores({
+      sessions: "++id, date, clientId, status, groupId",
+      prices: "code, baseCode, location, sessionType, product, active",
+    });
   }
 }
 

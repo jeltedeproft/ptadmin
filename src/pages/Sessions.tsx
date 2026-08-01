@@ -10,7 +10,8 @@ import {
   type SessionStatus,
   type SessionType,
 } from "../db/schema";
-import { bucketOf, isChargeable, isLooseSale, looseAvailableIn } from "../domain/credits";
+import { addGroupSessions, addSession } from "../db/actions";
+import { bucketOf, isChargeable, looseAvailableIn } from "../domain/credits";
 import { formatDateShort, today } from "../domain/dates";
 import { useClients, useOverview, useSessions } from "../hooks/useData";
 
@@ -18,6 +19,7 @@ export default function Sessions() {
   const sessions = useSessions();
   const clients = useClients();
   const [logging, setLogging] = useState(false);
+  const [group, setGroup] = useState(false);
 
   if (!sessions || !clients) return <Empty>Laden…</Empty>;
   const nameOf = (id: number) => clients.find((c) => c.id === id)?.name ?? "Onbekend";
@@ -26,9 +28,12 @@ export default function Sessions() {
     <>
       <div className="row-between">
         <h1>Sessies</h1>
-        <button className="btn-primary" onClick={() => setLogging(true)}>
-          + Sessie
-        </button>
+        <div className="row">
+          <button onClick={() => setGroup(true)}>+ Groep</button>
+          <button className="btn-primary" onClick={() => setLogging(true)}>
+            + Sessie
+          </button>
+        </div>
       </div>
       <p className="sub">{sessions.length} gelogd</p>
 
@@ -42,6 +47,7 @@ export default function Sessions() {
                 <div className="item-title">{nameOf(s.clientId)}</div>
                 <div className="item-sub">
                   {formatDateShort(s.date)} · {s.sessionType} · {s.location}
+                  {s.groupId ? ` · groep ${s.groupId}` : ""}
                   {s.note ? ` · ${s.note}` : ""}
                 </div>
               </div>
@@ -60,7 +66,103 @@ export default function Sessions() {
       )}
 
       {logging && <SessionModal onClose={() => setLogging(false)} />}
+      {group && <GroupSessionModal onClose={() => setGroup(false)} />}
     </>
+  );
+}
+
+/** One shared training logged as a session per participant (spec §9, §20). */
+function GroupSessionModal({ onClose }: { onClose: () => void }) {
+  const clients = useClients();
+  const [date, setDate] = useState(today());
+  const [location, setLocation] = useState<Location>("Privéruimte");
+  const [sessionType, setSessionType] = useState<SessionType>("Duo");
+  const [note, setNote] = useState("");
+  const [picked, setPicked] = useState<Map<number, SessionStatus>>(new Map());
+  const [saving, setSaving] = useState(false);
+
+  function toggle(id: number) {
+    setPicked((prev) => {
+      const next = new Map(prev);
+      if (next.has(id)) next.delete(id);
+      else next.set(id, "Uitgevoerd");
+      return next;
+    });
+  }
+
+  function setStatus(id: number, status: SessionStatus) {
+    setPicked((prev) => new Map(prev).set(id, status));
+  }
+
+  async function save() {
+    if (picked.size < 2) return;
+    setSaving(true);
+    const participants = [...picked.entries()].map(([clientId, status]) => ({ clientId, status }));
+    await addGroupSessions({ date, location, sessionType, note: note || undefined }, participants);
+    onClose();
+  }
+
+  return (
+    <Modal title="Groepstraining loggen" onClose={onClose}>
+      <Field label="Datum">
+        <input type="date" value={date} onChange={(e) => setDate(e.target.value)} />
+      </Field>
+      <div className="fields-2">
+        <Field label="Locatie">
+          <Select<Location> value={location} onChange={setLocation} options={LOCATIONS} />
+        </Field>
+        <Field label="Type sessie">
+          <Select<SessionType> value={sessionType} onChange={setSessionType} options={SESSION_TYPES} />
+        </Field>
+      </div>
+
+      <label>Deelnemers</label>
+      <div className="list" style={{ marginBottom: 12 }}>
+        {clients
+          ?.filter((c) => c.status !== "Stopgezet")
+          .map((c) => {
+            const status = picked.get(c.id!);
+            return (
+              <div key={c.id}>
+                <label className="check" style={{ margin: 0, flex: 1 }}>
+                  <input type="checkbox" checked={status !== undefined} onChange={() => toggle(c.id!)} />
+                  {c.name}
+                </label>
+                {status !== undefined && (
+                  <select
+                    value={status}
+                    style={{ width: "auto", maxWidth: 170 }}
+                    onChange={(e) => setStatus(c.id!, e.target.value as SessionStatus)}
+                  >
+                    {SESSION_STATUSES.map((s) => (
+                      <option key={s} value={s}>
+                        {s}
+                      </option>
+                    ))}
+                  </select>
+                )}
+              </div>
+            );
+          })}
+      </div>
+
+      <div className="alert" style={{ marginBottom: 12, borderLeftColor: "var(--accent)" }}>
+        {picked.size < 2
+          ? "Kies minstens twee deelnemers."
+          : `${picked.size} sessies worden aangemaakt onder één groepsnummer. Elke deelnemer verbruikt zijn eigen credit.`}
+      </div>
+
+      <Field label="Notitie">
+        <textarea value={note} onChange={(e) => setNote(e.target.value)} />
+      </Field>
+
+      <div className="modal-actions">
+        <button onClick={onClose}>Annuleer</button>
+        <button className="btn-primary" onClick={save} disabled={picked.size < 2 || saving}>
+          Opslaan
+        </button>
+      </div>
+    </Modal>
   );
 }
 
@@ -91,24 +193,7 @@ export function SessionModal({ clientId, onClose }: { clientId?: number; onClose
 
   async function save() {
     if (!form.clientId) return;
-    await db.transaction("rw", [db.sessions, db.transactions], async () => {
-      const sessionId = await db.sessions.add(form);
-      if (!isChargeable(form.status) || availableHere > 0) return;
-
-      // Mogelijkheid B: a losse sessie pays for one specific session, so book
-      // it against this one rather than leaving it floating as free credit.
-      const candidates = await db.transactions.where("clientId").equals(form.clientId).toArray();
-      const loose = candidates
-        .filter(
-          (t) =>
-            isLooseSale(t) &&
-            !t.sessionId &&
-            t.date <= form.date &&
-            bucketOf(t.location, t.sessionType) === bucket,
-        )
-        .sort((a, b) => a.date.localeCompare(b.date))[0];
-      if (loose) await db.transactions.update(loose.id!, { sessionId });
-    });
+    await addSession(form);
     onClose();
   }
 

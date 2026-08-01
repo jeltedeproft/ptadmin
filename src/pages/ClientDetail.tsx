@@ -178,6 +178,7 @@ export default function ClientDetail() {
                 <div className="item-title">{formatDateShort(s.date)}</div>
                 <div className="item-sub">
                   {s.sessionType} · {s.location}
+                  {s.groupId ? ` · groep ${s.groupId}` : ""}
                   {s.note ? ` · ${s.note}` : ""}
                 </div>
               </div>
