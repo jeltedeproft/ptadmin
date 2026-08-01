@@ -3,9 +3,11 @@ import { Empty, Field, Modal, Select } from "../components/ui";
 import { db } from "../db/db";
 import {
   LOCATIONS,
+  PAYMENT_METHODS,
   PRICED_SESSION_TYPES,
   PRODUCTS,
   type Location,
+  type PaymentMethod,
   type PricedSessionType,
   type Product,
   type Transaction,
@@ -18,6 +20,7 @@ export default function Transactions() {
   const transactions = useTransactions();
   const clients = useClients();
   const [adding, setAdding] = useState(false);
+  const [paying, setPaying] = useState<Transaction | null>(null);
 
   if (!transactions || !clients) return <Empty>Laden…</Empty>;
   const nameOf = (id: number) => clients.find((c) => c.id === id)?.name ?? "Onbekend";
@@ -41,7 +44,7 @@ export default function Transactions() {
       ) : (
         <div className="list">
           {transactions.map((t) => (
-            <div key={t.id}>
+            <div key={t.id} className={rowTone(t)}>
               <div>
                 <div className="item-title">
                   {nameOf(t.clientId)} — {formatEuro(t.amount)}
@@ -55,17 +58,27 @@ export default function Transactions() {
                     : `${t.creditsBought} credits`}
                   {t.expiresOn ? ` · vervalt ${formatDateShort(t.expiresOn)}` : ""}
                 </div>
+                <div className="item-sub">
+                  {t.paid
+                    ? `Betaald${t.paymentMethod ? ` · ${t.paymentMethod}` : ""}${t.paidOn ? ` · ${formatDateShort(t.paidOn)}` : ""}`
+                    : "Openstaand"}
+                  {t.invoiceNeeded && !t.invoiceNumber && " · factuur nog te maken"}
+                  {t.invoiceNumber && ` · factuur ${t.invoiceNumber}`}
+                </div>
               </div>
               <button
                 className={`btn-sm ${t.paid ? "" : "btn-primary"}`}
                 onClick={() =>
-                  db.transactions.update(t.id!, {
-                    paid: !t.paid,
-                    paidOn: !t.paid ? today() : undefined,
-                  })
+                  t.paid
+                    ? db.transactions.update(t.id!, {
+                        paid: false,
+                        paidOn: undefined,
+                        paymentMethod: undefined,
+                      })
+                    : setPaying(t)
                 }
               >
-                {t.paid ? "Betaald" : "Markeer betaald"}
+                {t.paid ? "Betaald" : "Registreer betaling"}
               </button>
             </div>
           ))}
@@ -73,7 +86,42 @@ export default function Transactions() {
       )}
 
       {adding && <TransactionModal onClose={() => setAdding(false)} />}
+      {paying && <PaymentModal transaction={paying} onClose={() => setPaying(null)} />}
     </>
+  );
+}
+
+/** Row tinting from the spec: open red, paid green, invoice still to make orange. */
+function rowTone(t: Transaction): string {
+  if (!t.paid) return "tone-open";
+  if (t.invoiceNeeded && !t.invoiceNumber) return "tone-todo";
+  return "tone-done";
+}
+
+function PaymentModal({ transaction, onClose }: { transaction: Transaction; onClose: () => void }) {
+  const [paidOn, setPaidOn] = useState(today());
+  const [method, setMethod] = useState<PaymentMethod>("Bancontact Pay");
+
+  async function save() {
+    await db.transactions.update(transaction.id!, { paid: true, paidOn, paymentMethod: method });
+    onClose();
+  }
+
+  return (
+    <Modal title={`Betaling van ${formatEuro(transaction.amount)}`} onClose={onClose}>
+      <Field label="Betaald op">
+        <input type="date" value={paidOn} onChange={(e) => setPaidOn(e.target.value)} />
+      </Field>
+      <Field label="Betaalwijze">
+        <Select<PaymentMethod> value={method} onChange={setMethod} options={PAYMENT_METHODS} />
+      </Field>
+      <div className="modal-actions">
+        <button onClick={onClose}>Annuleer</button>
+        <button className="btn-primary" onClick={save}>
+          Opslaan
+        </button>
+      </div>
+    </Modal>
   );
 }
 
@@ -86,6 +134,7 @@ export function TransactionModal({ clientId, onClose }: { clientId?: number; onC
   const [sessionType, setSessionType] = useState<PricedSessionType>("Solo");
   const [product, setProduct] = useState<Product>("Pakket 10");
   const [paid, setPaid] = useState(true);
+  const [method, setMethod] = useState<PaymentMethod>("Bancontact Pay");
   const [invoiceNeeded, setInvoiceNeeded] = useState(false);
   const [note, setNote] = useState("");
 
@@ -111,6 +160,7 @@ export function TransactionModal({ clientId, onClose }: { clientId?: number; onC
       expiresOn,
       paid,
       paidOn: paid ? today() : undefined,
+      paymentMethod: paid ? method : undefined,
       invoiceNeeded,
       note: note || undefined,
     };
@@ -178,6 +228,11 @@ export function TransactionModal({ clientId, onClose }: { clientId?: number; onC
         <input type="checkbox" checked={paid} onChange={(e) => setPaid(e.target.checked)} />
         Betaling voltooid
       </label>
+      {paid && (
+        <Field label="Betaalwijze">
+          <Select<PaymentMethod> value={method} onChange={setMethod} options={PAYMENT_METHODS} />
+        </Field>
+      )}
       <label className="check">
         <input type="checkbox" checked={invoiceNeeded} onChange={(e) => setInvoiceNeeded(e.target.checked)} />
         Factuur nodig

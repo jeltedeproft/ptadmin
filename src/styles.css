@@ -486,6 +486,17 @@ button:hover,
 
 /* ---------- misc ---------- */
 
+/* Status tinting for transaction rows. */
+.list > .tone-open {
+  border-left: 3px solid var(--crit);
+}
+.list > .tone-todo {
+  border-left: 3px solid var(--warn);
+}
+.list > .tone-done {
+  border-left: 3px solid var(--ok);
+}
+
 .monthnav {
   display: flex;
   align-items: center;

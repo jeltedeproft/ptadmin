@@ -41,6 +41,9 @@ export type InvoiceStatus = (typeof INVOICE_STATUSES)[number];
 export const INVOICE_TYPES = ["Eigen klant", "IN FORM"] as const;
 export type InvoiceType = (typeof INVOICE_TYPES)[number];
 
+export const PAYMENT_METHODS = ["Bancontact Pay", "Overschrijving", "Cash", "Andere"] as const;
+export type PaymentMethod = (typeof PAYMENT_METHODS)[number];
+
 export const INFORM_SESSION_TYPES = ["Solo PT", "Duo PT", "Semi PT", "Andere"] as const;
 export type InformSessionType = (typeof INFORM_SESSION_TYPES)[number];
 
@@ -94,6 +97,7 @@ export interface Transaction {
   expiresOn?: IsoDate; // derived: date + validityMonths, absent when validityMonths === 0
   paid: boolean;
   paidOn?: IsoDate;
+  paymentMethod?: PaymentMethod;
   invoiceNeeded: boolean;
   invoiceNumber?: string;
   /**
