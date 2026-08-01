@@ -3,6 +3,7 @@ import type {
   InformEntry,
   Invoice,
   IsoDate,
+  Lead,
   Location,
   Session,
   SessionType,
@@ -28,6 +29,7 @@ export interface DashboardData {
   sessions: Session[];
   inform: InformEntry[];
   invoices: Invoice[];
+  leads?: Lead[];
 }
 
 export interface DashboardReport {
@@ -65,6 +67,8 @@ export interface DashboardReport {
     byType: Partial<Record<SessionType, number>>;
     byLocation: Partial<Record<Location, number>>;
   };
+  /** Leads whose follow-up date has arrived. */
+  leadsDue: Lead[];
   unpaidTransactions: Transaction[];
   uninvoicedInform: InformEntry[];
   overdueInvoices: Invoice[];
@@ -219,6 +223,13 @@ export function buildReport(
       byType,
       byLocation,
     },
+    leadsDue: (data.leads ?? []).filter(
+      (l) =>
+        l.followUpOn !== undefined &&
+        l.followUpOn <= asOf &&
+        l.status !== "Klant geworden" &&
+        l.status !== "Geen interesse",
+    ),
     unpaidTransactions,
     uninvoicedInform: inform.filter((e) => !e.invoiced),
     overdueInvoices: openInvoices.filter((i) => i.dueDate < asOf),

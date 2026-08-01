@@ -50,6 +50,46 @@ export type InformSessionType = (typeof INFORM_SESSION_TYPES)[number];
 /** ISO date string, `YYYY-MM-DD`. Stored as text so IndexedDB indexes sort chronologically. */
 export type IsoDate = string;
 
+export const LEAD_STATUSES = [
+  "Nieuw",
+  "Gecontacteerd",
+  "Kennismaking gepland",
+  "Intake gepland",
+  "Voorstel verstuurd",
+  "Klant geworden",
+  "Geen interesse",
+  "Later opvolgen",
+] as const;
+export type LeadStatus = (typeof LEAD_STATUSES)[number];
+
+export const LEAD_SOURCES = [
+  "Doorverwijzing",
+  "Instagram",
+  "Facebook",
+  "Website",
+  "IN FORM",
+  "Andere",
+] as const;
+export type LeadSource = (typeof LEAD_SOURCES)[number];
+
+/** A prospect, tracked before they become a client. */
+export interface Lead {
+  id?: number;
+  name: string;
+  phone?: string;
+  email?: string;
+  source?: LeadSource;
+  firstContact: IsoDate;
+  interest?: string;
+  wantedLocation?: Location;
+  wantedSessionType?: PricedSessionType;
+  status: LeadStatus;
+  followUpOn?: IsoDate;
+  note?: string;
+  /** Set once converted, so the lead history stays linked to the client. */
+  convertedClientId?: number;
+}
+
 export interface Client {
   id?: number;
   name: string;

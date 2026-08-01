@@ -2,6 +2,7 @@ import { NavLink, Route, Routes } from "react-router-dom";
 import Dashboard from "./pages/Dashboard";
 import Clients from "./pages/Clients";
 import ClientDetail from "./pages/ClientDetail";
+import Leads from "./pages/Leads";
 import Sessions from "./pages/Sessions";
 import Transactions from "./pages/Transactions";
 import Inform from "./pages/Inform";
@@ -50,6 +51,7 @@ export default function App() {
           <Route path="/" element={<Dashboard />} />
           <Route path="/klanten" element={<Clients />} />
           <Route path="/klanten/:id" element={<ClientDetail />} />
+          <Route path="/leads" element={<Leads />} />
           <Route path="/sessies" element={<Sessions />} />
           <Route path="/verkopen" element={<Transactions />} />
           <Route path="/inform" element={<Inform />} />

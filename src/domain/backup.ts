@@ -7,6 +7,8 @@ interface Backup {
   version: number;
   exportedAt: string;
   clients: unknown[];
+  /** Added after version 1 — older back-ups simply have none. */
+  leads?: unknown[];
   prices: unknown[];
   transactions: unknown[];
   sessions: unknown[];
@@ -20,6 +22,7 @@ export async function exportBackup(): Promise<void> {
     version: BACKUP_VERSION,
     exportedAt: new Date().toISOString(),
     clients: await db.clients.toArray(),
+    leads: await db.leads.toArray(),
     prices: await db.prices.toArray(),
     transactions: await db.transactions.toArray(),
     sessions: await db.sessions.toArray(),
@@ -46,10 +49,11 @@ export async function importBackup(file: File): Promise<void> {
 
   await db.transaction(
     "rw",
-    [db.clients, db.prices, db.transactions, db.sessions, db.inform, db.invoices, db.settings],
+    [db.clients, db.leads, db.prices, db.transactions, db.sessions, db.inform, db.invoices, db.settings],
     async () => {
       await Promise.all([
         db.clients.clear(),
+        db.leads.clear(),
         db.prices.clear(),
         db.transactions.clear(),
         db.sessions.clear(),
@@ -58,6 +62,7 @@ export async function importBackup(file: File): Promise<void> {
         db.settings.clear(),
       ]);
       await db.clients.bulkAdd(parsed.clients as never);
+      await db.leads.bulkAdd((parsed.leads ?? []) as never);
       await db.prices.bulkAdd(parsed.prices as never);
       await db.transactions.bulkAdd(parsed.transactions as never);
       await db.sessions.bulkAdd(parsed.sessions as never);

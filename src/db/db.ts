@@ -3,6 +3,7 @@ import type {
   Client,
   InformEntry,
   Invoice,
+  Lead,
   PriceItem,
   Session,
   Settings,
@@ -12,6 +13,7 @@ import { DEFAULT_PRICES, DEFAULT_SETTINGS } from "./seed";
 
 export class PtAdminDb extends Dexie {
   clients!: Table<Client, number>;
+  leads!: Table<Lead, number>;
   prices!: Table<PriceItem, string>;
   transactions!: Table<Transaction, number>;
   sessions!: Table<Session, number>;
@@ -35,6 +37,9 @@ export class PtAdminDb extends Dexie {
     this.version(2).stores({
       sessions: "++id, date, clientId, status, groupId",
       prices: "code, baseCode, location, sessionType, product, active",
+    });
+    this.version(3).stores({
+      leads: "++id, name, status, followUpOn",
     });
   }
 }

@@ -80,3 +80,7 @@ export function useInform() {
 export function useInvoices() {
   return useLiveQuery(() => db.invoices.orderBy("date").reverse().toArray(), []);
 }
+
+export function useLeads() {
+  return useLiveQuery(() => db.leads.orderBy("name").toArray(), []);
+}

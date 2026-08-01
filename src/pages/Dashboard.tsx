@@ -1,7 +1,15 @@
 import { useMemo, useState, type ReactNode } from "react";
 import { Link } from "react-router-dom";
 import { Badge, Card, Empty, Kpi, Meter } from "../components/ui";
-import { useInform, useInvoices, useOverview, useSessions, useSettings, useTransactions } from "../hooks/useData";
+import {
+  useInform,
+  useInvoices,
+  useLeads,
+  useOverview,
+  useSessions,
+  useSettings,
+  useTransactions,
+} from "../hooks/useData";
 import {
   currentMonthKey,
   formatDateShort,
@@ -25,14 +33,15 @@ export default function Dashboard() {
   const sessions = useSessions();
   const inform = useInform();
   const invoices = useInvoices();
+  const leads = useLeads();
   const [month, setMonth] = useState(currentMonthKey());
 
   const data = useMemo(
     () =>
       settings && overview && transactions && sessions && inform && invoices
-        ? { overview, transactions, sessions, inform, invoices }
+        ? { overview, transactions, sessions, inform, invoices, leads }
         : null,
-    [settings, overview, transactions, sessions, inform, invoices],
+    [settings, overview, transactions, sessions, inform, invoices, leads],
   );
 
   const report = useMemo(
@@ -221,8 +230,17 @@ function Actions({
   report: ReturnType<typeof buildReport>;
   settings: { inactiveDays: number; packExpiryWarningDays: number };
 }) {
-  const { clients, unpaidTransactions, uninvoicedInform, overdueInvoices, unsentInvoices } = report;
+  const { clients, unpaidTransactions, uninvoicedInform, overdueInvoices, unsentInvoices, leadsDue } =
+    report;
   const items: ReactNode[] = [];
+
+  for (const l of leadsDue) {
+    items.push(
+      <Action key={`lead-${l.id}`} to="/leads">
+        <strong>{l.name}</strong> — lead opvolgen ({l.status.toLowerCase()})
+      </Action>,
+    );
+  }
 
   for (const i of overdueInvoices) {
     items.push(

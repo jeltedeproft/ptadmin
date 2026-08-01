@@ -37,10 +37,12 @@ export type ExportKind =
   | "facturen"
   | "inform"
   | "omzet-per-maand"
-  | "openstaand";
+  | "openstaand"
+  | "leads";
 
 export const EXPORTS: { kind: ExportKind; label: string; hint: string }[] = [
   { kind: "klanten", label: "Klanten", hint: "Contactgegevens, status, evaluaties" },
+  { kind: "leads", label: "Leads", hint: "Prospecten en opvolgdatums" },
   { kind: "transacties", label: "Transacties", hint: "Aankopen, bedragen, betaalstatus" },
   { kind: "sessies", label: "Sessies", hint: "Datum, klant, type, status" },
   { kind: "facturen", label: "Facturen", hint: "Nummer, bedrag, status, vervaldatum" },
@@ -68,6 +70,17 @@ export async function exportCsv(kind: ExportKind): Promise<void> {
           clients.map((c) => [c.id, c.name, c.billingName, c.status, c.startDate, c.location, c.email, c.phone, c.billingAddress?.replace(/\n/g, ", "), c.companyNumber, c.lastEvaluation, c.nextEvaluation, c.note]),
         ),
       );
+
+    case "leads": {
+      const leads = await db.leads.orderBy("name").toArray();
+      return download(
+        kind,
+        toCsv(
+          ["Naam", "Telefoon", "E-mail", "Bron", "Eerste contact", "Interesse", "Gewenste locatie", "Gewenst type", "Status", "Opvolgen op", "Notitie"],
+          leads.map((l) => [l.name, l.phone, l.email, l.source, l.firstContact, l.interest, l.wantedLocation, l.wantedSessionType, l.status, l.followUpOn, l.note]),
+        ),
+      );
+    }
 
     case "transacties":
       return download(
