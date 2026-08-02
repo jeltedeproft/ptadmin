@@ -1,6 +1,7 @@
 import { useState } from "react";
 import { Badge, Empty, Field, Modal, Select } from "../components/ui";
 import { db, getSettings } from "../db/db";
+import { removeRecord } from "../db/actions";
 import { INFORM_SESSION_TYPES, type InformEntry, type InformSessionType, type Invoice } from "../db/schema";
 import { addDays, formatDateShort, formatEuro, formatMonth, monthKey, today } from "../domain/dates";
 import { nextNumber } from "../domain/invoicing";
@@ -112,7 +113,7 @@ export default function Inform() {
                       {!e.invoiced && (
                         <button
                           className="btn-sm btn-danger"
-                          onClick={() => confirm("Verwijderen?") && db.inform.delete(e.id!)}
+                          onClick={() => confirm("Verwijderen?") && removeRecord("inform", e.id!)}
                         >
                           ✕
                         </button>

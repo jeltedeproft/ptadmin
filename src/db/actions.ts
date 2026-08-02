@@ -34,6 +34,38 @@ async function linkLooseSale(session: Session, sessionId: number): Promise<void>
   if (loose) await db.transactions.update(loose.id!, { sessionId });
 }
 
+/**
+ * Deletes a record and leaves a tombstone, so the next sync removes it from the
+ * server as well. Both happen in one transaction: a delete without its
+ * tombstone would silently come back on the next pull.
+ */
+export async function removeRecord(table: SyncedTable, localId: number): Promise<void> {
+  await db.transaction("rw", [db[table], db.idmap, db.tombstones], async () => {
+    const map = await db.idmap.get({ table, localId });
+    await (db[table] as unknown as { delete(k: number): Promise<void> }).delete(localId);
+    await db.tombstones.add({
+      table,
+      localId,
+      remoteId: map?.remoteId,
+      at: new Date().toISOString(),
+    });
+    if (map) await db.idmap.delete([table, localId]);
+  });
+}
+
+export type SyncedTable = "clients" | "transactions" | "sessions" | "inform" | "invoices" | "leads";
+
+/** A client plus everything hanging off them, tombstoned as one unit. */
+export async function removeClientCascade(clientId: number): Promise<void> {
+  const [sessions, transactions] = await Promise.all([
+    db.sessions.where("clientId").equals(clientId).primaryKeys(),
+    db.transactions.where("clientId").equals(clientId).primaryKeys(),
+  ]);
+  for (const id of sessions) await removeRecord("sessions", id as number);
+  for (const id of transactions) await removeRecord("transactions", id as number);
+  await removeRecord("clients", clientId);
+}
+
 export async function addSession(session: Session): Promise<number> {
   return db.transaction("rw", [db.sessions, db.transactions], async () => {
     const id = await db.sessions.add(session);

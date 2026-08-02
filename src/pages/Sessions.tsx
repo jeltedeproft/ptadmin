@@ -1,6 +1,5 @@
 import { useState } from "react";
 import { Badge, Empty, Field, Modal, Select } from "../components/ui";
-import { db } from "../db/db";
 import {
   LOCATIONS,
   SESSION_STATUSES,
@@ -10,7 +9,7 @@ import {
   type SessionStatus,
   type SessionType,
 } from "../db/schema";
-import { addGroupSessions, addSession } from "../db/actions";
+import { addGroupSessions, addSession, removeRecord } from "../db/actions";
 import { bucketOf, isChargeable, looseAvailableIn } from "../domain/credits";
 import { formatDateShort, today } from "../domain/dates";
 import { useClients, useOverview, useSessions } from "../hooks/useData";
@@ -55,7 +54,7 @@ export default function Sessions() {
                 <Badge tone={isChargeable(s.status) ? "" : "ok"}>{s.status}</Badge>
                 <button
                   className="btn-sm btn-danger"
-                  onClick={() => confirm("Sessie verwijderen?") && db.sessions.delete(s.id!)}
+                  onClick={() => confirm("Sessie verwijderen?") && removeRecord("sessions", s.id!)}
                 >
                   ✕
                 </button>

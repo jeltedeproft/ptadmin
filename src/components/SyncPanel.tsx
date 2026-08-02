@@ -29,7 +29,7 @@ export default function SyncPanel() {
       const r = await syncNow(session!.user.id);
       setResult(r);
     } catch (err) {
-      setResult({ pushed: 0, pulled: 0, skipped: 0, errors: [(err as Error).message], at: "" });
+      setResult({ pushed: 0, pulled: 0, deleted: 0, skipped: 0, errors: [(err as Error).message], at: "" });
     } finally {
       setBusy(false);
       await refresh();
@@ -68,6 +68,7 @@ export default function SyncPanel() {
         >
           <strong>
             {result.pushed} verstuurd, {result.pulled} opgehaald
+            {result.deleted > 0 && `, ${result.deleted} verwijderd`}
             {result.skipped > 0 && `, ${result.skipped} overgeslagen`}
           </strong>
           {result.skipped > 0 && result.errors.length === 0 && (

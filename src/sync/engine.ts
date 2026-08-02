@@ -22,10 +22,20 @@ import { SPECS, type Resolve, type TableName, type Unresolve } from "./rows";
 export interface SyncResult {
   pushed: number;
   pulled: number;
+  deleted: number;
   skipped: number;
   errors: string[];
   at: string;
 }
+
+const empty = (): SyncResult => ({
+  pushed: 0,
+  pulled: 0,
+  deleted: 0,
+  skipped: 0,
+  errors: [],
+  at: new Date().toISOString(),
+});
 
 const LAST_PULL = "lastPulledAt";
 
@@ -60,7 +70,29 @@ async function localRows(spec: (typeof SPECS)[number]): Promise<{ id: number; re
  */
 export async function push(coachId: string): Promise<SyncResult> {
   const sb = requireSupabase();
-  const result: SyncResult = { pushed: 0, pulled: 0, skipped: 0, errors: [], at: new Date().toISOString() };
+  const result = empty();
+
+  // Deletions first: a record removed here should not be re-sent below.
+  for (const stone of await db.tombstones.toArray()) {
+    if (stone.remoteId === undefined) {
+      // Never reached the server; nothing to remove there.
+      await db.tombstones.delete(stone.id!);
+      continue;
+    }
+    const spec = SPECS.find((s) => s.local === stone.table);
+    if (!spec) {
+      await db.tombstones.delete(stone.id!);
+      continue;
+    }
+    const column = spec.local === "prices" ? "code" : "id";
+    const { error } = await sb.from(spec.remote).delete().eq(column, stone.remoteId);
+    if (error) {
+      result.errors.push(`${spec.remote} verwijderen: ${error.message}`);
+      continue;
+    }
+    await db.tombstones.delete(stone.id!);
+    result.deleted += 1;
+  }
 
   for (const spec of SPECS) {
     let { resolve } = await loadMaps();
@@ -123,9 +155,9 @@ export async function push(coachId: string): Promise<SyncResult> {
  * Brings down anything changed remotely since the last pull — the other
  * device's work. Records already known locally are updated in place.
  */
-export async function pull(): Promise<SyncResult> {
+export async function pull(coachId: string): Promise<SyncResult> {
   const sb = requireSupabase();
-  const result: SyncResult = { pushed: 0, pulled: 0, skipped: 0, errors: [], at: new Date().toISOString() };
+  const result = empty();
   const since = (await db.syncmeta.get(LAST_PULL))?.value;
 
   for (const spec of SPECS) {
@@ -173,16 +205,55 @@ export async function pull(): Promise<SyncResult> {
     }
   }
 
+  // Records deleted on another device. An incremental pull cannot see a row
+  // that no longer exists, so the surviving ids are compared against the map.
+  for (const spec of SPECS) {
+    if (spec.local === "prices") continue;
+    const { data, error } = await sb.from(spec.remote).select("id");
+    if (error) {
+      result.errors.push(`${spec.remote} controleren: ${error.message}`);
+      continue;
+    }
+    const alive = new Set((data ?? []).map((r) => String((r as { id: unknown }).id)));
+    const mapped = await db.idmap.where("table").equals(spec.local).toArray();
+    for (const m of mapped) {
+      if (alive.has(String(m.remoteId))) continue;
+      await db.transaction("rw", [db[spec.local], db.idmap], async () => {
+        await (db[spec.local] as unknown as { delete(k: number): Promise<void> }).delete(m.localId);
+        await db.idmap.delete([spec.local, m.localId]);
+      });
+      result.deleted += 1;
+    }
+  }
+
+  // Settings: everything except the device-local access code.
+  const { data: remoteSettings } = await sb
+    .from("settings")
+    .select("data")
+    .eq("coach_id", coachId)
+    .maybeSingle();
+  if (remoteSettings?.data) {
+    const local = await db.settings.get(1);
+    await db.settings.put({
+      ...(remoteSettings.data as object),
+      id: 1,
+      accessCodeHash: local?.accessCodeHash,
+      accessCodeSalt: local?.accessCodeSalt,
+    } as never);
+    result.pulled += 1;
+  }
+
   await db.syncmeta.put({ key: LAST_PULL, value: result.at });
   return result;
 }
 
 export async function syncNow(coachId: string): Promise<SyncResult> {
   const up = await push(coachId);
-  const down = await pull();
+  const down = await pull(coachId);
   return {
     pushed: up.pushed,
     pulled: down.pulled,
+    deleted: up.deleted + down.deleted,
     skipped: up.skipped + down.skipped,
     errors: [...up.errors, ...down.errors],
     at: down.at,

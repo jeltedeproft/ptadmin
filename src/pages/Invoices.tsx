@@ -1,6 +1,7 @@
 import { useState } from "react";
 import { Badge, Empty, Modal, Select } from "../components/ui";
 import { db, getSettings } from "../db/db";
+import { removeRecord } from "../db/actions";
 import { INVOICE_STATUSES, type Invoice, type InvoiceStatus } from "../db/schema";
 import { addDays, formatDateShort, formatEuro, today } from "../domain/dates";
 import { downloadInvoicePdf, nextNumber } from "../domain/invoicing";
@@ -140,8 +141,8 @@ function InvoiceModal({ invoice, onClose }: { invoice: Invoice; onClose: () => v
 
   async function remove() {
     if (!confirm(`Factuur ${invoice.number} verwijderen?`)) return;
-    await db.transaction("rw", [db.invoices, db.inform, db.transactions], async () => {
-      await db.invoices.delete(invoice.id!);
+    await removeRecord("invoices", invoice.id!);
+    await db.transaction("rw", [db.inform, db.transactions], async () => {
       // Release the source records so they can be invoiced again.
       if (invoice.sourceType === "inform") {
         for (const id of invoice.sourceIds) {

@@ -14,6 +14,7 @@ import { isChargeable, SIGNAL_LABEL } from "../domain/credits";
 import { formatDateShort, formatEuro } from "../domain/dates";
 import { useClientOverview } from "../hooks/useData";
 import InvitePanel from "../components/InvitePanel";
+import { removeClientCascade } from "../db/actions";
 import { SessionModal } from "./Sessions";
 import { TransactionModal } from "./Transactions";
 
@@ -40,11 +41,7 @@ export default function ClientDetail() {
 
   async function remove() {
     if (!confirm(`${client.name} en alle bijhorende sessies en verkopen verwijderen?`)) return;
-    await db.transaction("rw", [db.clients, db.sessions, db.transactions], async () => {
-      await db.clients.delete(clientId);
-      await db.sessions.where("clientId").equals(clientId).delete();
-      await db.transactions.where("clientId").equals(clientId).delete();
-    });
+    await removeClientCascade(clientId);
     navigate("/coach");
   }
 

@@ -23,6 +23,15 @@ export interface SyncMeta {
   value: string;
 }
 
+/** A record deleted locally, still to be deleted on the server. */
+export interface Tombstone {
+  id?: number;
+  table: string;
+  localId: number;
+  remoteId?: string | number;
+  at: string;
+}
+
 export class PtAdminDb extends Dexie {
   clients!: Table<Client, number>;
   leads!: Table<Lead, number>;
@@ -34,6 +43,7 @@ export class PtAdminDb extends Dexie {
   settings!: Table<Settings, number>;
   idmap!: Table<IdMap, [string, number]>;
   syncmeta!: Table<SyncMeta, string>;
+  tombstones!: Table<Tombstone, number>;
 
   constructor() {
     super("ptadmin");
@@ -60,6 +70,11 @@ export class PtAdminDb extends Dexie {
     this.version(4).stores({
       idmap: "[table+localId], [table+remoteId], table",
       syncmeta: "key",
+    });
+    // Deleting a record locally leaves a tombstone, otherwise the next sync has
+    // no way to know the row should disappear from the server too.
+    this.version(5).stores({
+      tombstones: "++id, table",
     });
   }
 }

@@ -3,6 +3,7 @@ import { useLiveQuery } from "dexie-react-hooks";
 import { useNavigate } from "react-router-dom";
 import { Badge, Empty, Field, Modal, Select } from "../components/ui";
 import { db } from "../db/db";
+import { removeRecord } from "../db/actions";
 import {
   LEAD_SOURCES,
   LEAD_STATUSES,
@@ -146,7 +147,7 @@ function LeadModal({ lead, onClose }: { lead?: Lead; onClose: () => void }) {
 
   async function remove() {
     if (!lead?.id || !confirm(`${lead.name} verwijderen?`)) return;
-    await db.leads.delete(lead.id);
+    await removeRecord("leads", lead.id);
     onClose();
   }
 
