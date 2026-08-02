@@ -41,6 +41,8 @@ export interface TableSpec<T> {
   remote: string;
   /** Tables whose ids this one points at; they must sync first. */
   dependsOn: TableName[];
+  /** Money. A trainer has no access, so syncing it would only raise errors. */
+  ownerOnly?: boolean;
   toRow(record: T, coachId: string, resolve: Resolve): Record<string, unknown> | null;
   fromRow(row: Record<string, unknown>, unresolve: Unresolve): T | null;
 }
@@ -89,6 +91,7 @@ export const PRICES: TableSpec<PriceItem> = {
   local: "prices",
   remote: "prices",
   dependsOn: [],
+  ownerOnly: true,
   toRow: (p, coachId) => ({
     code: p.code,
     coach_id: coachId,
@@ -124,6 +127,7 @@ export const TRANSACTIONS: TableSpec<Transaction> = {
   local: "transactions",
   remote: "transactions",
   dependsOn: ["clients", "sessions"],
+  ownerOnly: true,
   toRow: (t, coachId, resolve) => {
     const client = resolve("clients", t.clientId);
     // A purchase without its client would violate the foreign key; skip it and
@@ -214,6 +218,7 @@ export const INFORM: TableSpec<InformEntry> = {
   local: "inform",
   remote: "inform_entries",
   dependsOn: [],
+  ownerOnly: true,
   toRow: (e, coachId) => ({
     coach_id: coachId,
     date: e.date,
@@ -243,6 +248,7 @@ export const INVOICES: TableSpec<Invoice> = {
   local: "invoices",
   remote: "invoices",
   dependsOn: ["clients"],
+  ownerOnly: true,
   toRow: (i, coachId, resolve) => ({
     coach_id: coachId,
     client_id: i.clientId === undefined ? null : (resolve("clients", i.clientId) ?? null),

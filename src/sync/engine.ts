@@ -1,6 +1,7 @@
 import { db } from "../db/db";
 import { requireSupabase } from "../db/supabase";
 import { SPECS, type Resolve, type TableName, type Unresolve } from "./rows";
+import type { Role } from "../portals";
 
 /**
  * Local-first synchronisation.
@@ -39,6 +40,15 @@ const empty = (): SyncResult => ({
 
 const LAST_PULL = "lastPulledAt";
 
+/**
+ * A trainer has no access to the financial tables, so syncing them would do
+ * nothing but collect permission errors. The server refuses regardless; this
+ * only keeps the client from asking.
+ */
+function specsFor(role: Role) {
+  return role === "owner" ? SPECS : SPECS.filter((s) => !s.ownerOnly);
+}
+
 async function loadMaps() {
   const rows = await db.idmap.toArray();
   const toRemote = new Map<string, string | number>();
@@ -68,7 +78,7 @@ async function localRows(spec: (typeof SPECS)[number]): Promise<{ id: number; re
  * Sends everything local that Postgres does not have yet, and updates what it
  * already has. Safe to run repeatedly: the id map keeps it from duplicating.
  */
-export async function push(coachId: string): Promise<SyncResult> {
+export async function push(coachId: string, role: Role): Promise<SyncResult> {
   const sb = requireSupabase();
   const result = empty();
 
@@ -94,7 +104,7 @@ export async function push(coachId: string): Promise<SyncResult> {
     result.deleted += 1;
   }
 
-  for (const spec of SPECS) {
+  for (const spec of specsFor(role)) {
     let { resolve } = await loadMaps();
 
     if (spec.local === "prices") {
@@ -138,7 +148,7 @@ export async function push(coachId: string): Promise<SyncResult> {
   }
 
   // Settings are a single JSON blob per coach.
-  const settings = await db.settings.get(1);
+  const settings = role === "owner" ? await db.settings.get(1) : undefined;
   if (settings) {
     const { accessCodeHash: _h, accessCodeSalt: _s, ...shared } = settings;
     const { error } = await sb
@@ -155,12 +165,12 @@ export async function push(coachId: string): Promise<SyncResult> {
  * Brings down anything changed remotely since the last pull — the other
  * device's work. Records already known locally are updated in place.
  */
-export async function pull(coachId: string): Promise<SyncResult> {
+export async function pull(coachId: string, role: Role): Promise<SyncResult> {
   const sb = requireSupabase();
   const result = empty();
   const since = (await db.syncmeta.get(LAST_PULL))?.value;
 
-  for (const spec of SPECS) {
+  for (const spec of specsFor(role)) {
     const { unresolve } = await loadMaps();
 
     let query = sb.from(spec.remote).select("*");
@@ -207,7 +217,7 @@ export async function pull(coachId: string): Promise<SyncResult> {
 
   // Records deleted on another device. An incremental pull cannot see a row
   // that no longer exists, so the surviving ids are compared against the map.
-  for (const spec of SPECS) {
+  for (const spec of specsFor(role)) {
     if (spec.local === "prices") continue;
     const { data, error } = await sb.from(spec.remote).select("id");
     if (error) {
@@ -226,30 +236,33 @@ export async function pull(coachId: string): Promise<SyncResult> {
     }
   }
 
-  // Settings: everything except the device-local access code.
-  const { data: remoteSettings } = await sb
-    .from("settings")
-    .select("data")
-    .eq("coach_id", coachId)
-    .maybeSingle();
-  if (remoteSettings?.data) {
-    const local = await db.settings.get(1);
-    await db.settings.put({
-      ...(remoteSettings.data as object),
-      id: 1,
-      accessCodeHash: local?.accessCodeHash,
-      accessCodeSalt: local?.accessCodeSalt,
-    } as never);
-    result.pulled += 1;
+  // Settings hold the IBAN and the invoice numbering, so they are owner-only.
+  if (role === "owner") {
+    const { data: remoteSettings } = await sb
+      .from("settings")
+      .select("data")
+      .eq("coach_id", coachId)
+      .maybeSingle();
+    if (remoteSettings?.data) {
+      const local = await db.settings.get(1);
+      await db.settings.put({
+        ...(remoteSettings.data as object),
+        id: 1,
+        // The access code belongs to this device, not to the business.
+        accessCodeHash: local?.accessCodeHash,
+        accessCodeSalt: local?.accessCodeSalt,
+      } as never);
+      result.pulled += 1;
+    }
   }
 
   await db.syncmeta.put({ key: LAST_PULL, value: result.at });
   return result;
 }
 
-export async function syncNow(coachId: string): Promise<SyncResult> {
-  const up = await push(coachId);
-  const down = await pull(coachId);
+export async function syncNow(coachId: string, role: Role): Promise<SyncResult> {
+  const up = await push(coachId, role);
+  const down = await pull(coachId, role);
   return {
     pushed: up.pushed,
     pulled: down.pulled,
@@ -265,11 +278,11 @@ export async function lastSyncedAt(): Promise<string | undefined> {
 }
 
 /** How much local data has never reached the server. */
-export async function pendingCount(): Promise<number> {
+export async function pendingCount(role: Role = "owner"): Promise<number> {
   const mapped = await db.idmap.toArray();
   const seen = new Set(mapped.map((m) => `${m.table}:${m.localId}`));
   let pending = 0;
-  for (const spec of SPECS) {
+  for (const spec of specsFor(role)) {
     if (spec.local === "prices") continue;
     const rows = await localRows(spec);
     pending += rows.filter((r) => !seen.has(`${spec.local}:${r.id}`)).length;

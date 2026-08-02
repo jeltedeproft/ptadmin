@@ -50,7 +50,7 @@ function Gate() {
   if (!hasBackend) {
     return (
       <LockGate>
-        <Shell role="coach" />
+        <Shell role="owner" />
       </LockGate>
     );
   }

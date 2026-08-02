@@ -1,6 +1,7 @@
 import { useEffect, useRef, useState } from "react";
 import { useAuth } from "../auth/AuthProvider";
 import { hasBackend } from "../db/supabase";
+import { isStaff } from "../portals";
 import { syncNow, type SyncResult } from "./engine";
 
 /**
@@ -30,7 +31,7 @@ export function useAutoSync(): AutoSyncState {
   const inFlight = useRef(false);
 
   const userId = session?.user.id;
-  const enabled = hasBackend && !!userId && role === "coach";
+  const enabled = hasBackend && !!userId && isStaff(role);
 
   useEffect(() => {
     if (!enabled) return;
@@ -43,7 +44,7 @@ export function useAutoSync(): AutoSyncState {
       inFlight.current = true;
       setRunning(true);
       try {
-        const result = await syncNow(userId!);
+        const result = await syncNow(userId!, role!);
         lastRunAt.current = Date.now();
         setLast(result);
       } catch {

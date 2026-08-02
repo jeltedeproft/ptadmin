@@ -46,6 +46,7 @@ declare
   coach_b uuid := gen_random_uuid();
   cli_a   uuid := gen_random_uuid();
   cli_b   uuid := gen_random_uuid();
+  trainer uuid := gen_random_uuid();
   ca_id   bigint;
   cb_id   bigint;
   other   bigint;
@@ -54,9 +55,11 @@ begin
                           email_confirmed_at, created_at, updated_at)
   select u, '00000000-0000-0000-0000-000000000000', 'authenticated', 'authenticated',
          u::text || '@test.local', '', now(), now(), now()
-  from unnest(array[coach_a, coach_b, cli_a, cli_b]) u;
+  from unnest(array[coach_a, coach_b, cli_a, cli_b, trainer]) u;
 
-  update public.profiles set role = 'coach' where id in (coach_a, coach_b);
+  update public.profiles set role = 'owner', owner_id = id where id in (coach_a, coach_b);
+  -- An employee of coach A: works on A's clients, owns nothing himself.
+  update public.profiles set role = 'trainer', owner_id = coach_a where id = trainer;
 
   -- Coach A: two clients, one of whom (Anna) has a login.
   insert into public.clients (coach_id, auth_user_id, name)
@@ -91,6 +94,7 @@ begin
   perform set_config('pg_temp.coach_a', coach_a::text, true);
   perform set_config('pg_temp.coach_b', coach_b::text, true);
   perform set_config('pg_temp.cli_a',   cli_a::text,   true);
+  perform set_config('pg_temp.trainer', trainer::text, true);
 end $$;
 
 -- --------------------------------------------------------------- coach view
@@ -183,6 +187,47 @@ begin
   perform pg_temp.expect('klant kan zichzelf geen coach maken',
     (select count(*) from public.profiles where id = a and role = 'coach'), 0);
   if not blocked then raise notice 'let op: rolwijziging werd niet geweigerd, enkel genegeerd'; end if;
+end $$;
+
+-- --------------------------------------------------------------- trainer view
+-- The whole point of the role: the people, never the money.
+do $$
+declare
+  t uuid := current_setting('pg_temp.trainer')::uuid;
+  blocked boolean;
+begin
+  perform pg_temp.act_as(t);
+
+  perform pg_temp.expect('trainer ziet de klanten van zijn eigenaar',
+    (select count(*) from public.clients), 2);
+  perform pg_temp.expect('trainer ziet de sessies',
+    (select count(*) from public.sessions), 2);
+
+  perform pg_temp.expect('trainer ziet GEEN verkopen',
+    (select count(*) from public.transactions), 0);
+  perform pg_temp.expect('trainer ziet GEEN facturen',
+    (select count(*) from public.invoices), 0);
+  perform pg_temp.expect('trainer ziet GEEN INFORM-uren',
+    (select count(*) from public.inform_entries), 0);
+  perform pg_temp.expect('trainer ziet GEEN instellingen',
+    (select count(*) from public.settings), 0);
+
+  -- Credits without amounts: the count is visible, the money is not.
+  perform pg_temp.expect('trainer ziet wel het creditsaldo',
+    (select count(*) from public.client_credits), 2);
+
+  begin
+    perform 1 from public.client_credits where amount > 0;
+    blocked := false;
+  exception when undefined_column then blocked := true;
+  end;
+  if not blocked then
+    perform pg_temp.as_admin();
+    raise exception 'FAIL bedrag is zichtbaar via client_credits';
+  end if;
+  raise notice 'ok   client_credits bevat geen bedrag';
+
+  perform pg_temp.as_admin();
 end $$;
 
 -- ------------------------------------------------------------ anonymous view

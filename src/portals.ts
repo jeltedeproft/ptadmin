@@ -12,7 +12,13 @@
  * in supabase/migrations/0001_init.sql — this only keeps the UI honest.
  */
 export type Portal = "coach" | "business" | "client";
-export type Role = "coach" | "client";
+
+/**
+ * owner   — runs the business, sees the money.
+ * trainer — works for an owner: the people, never the finances.
+ * client  — their own records only.
+ */
+export type Role = "owner" | "trainer" | "client";
 
 export interface NavItem {
   to: string;
@@ -60,8 +66,31 @@ export const NAV: Record<Portal, NavItem[]> = {
 };
 
 export function portalsFor(role: Role): Portal[] {
-  return role === "coach" ? ["coach", "business"] : ["client"];
+  switch (role) {
+    case "owner":
+      return ["coach", "business"];
+    case "trainer":
+      return ["coach"];
+    default:
+      return ["client"];
+  }
 }
+
+/** Whether this role may see money at all. The server decides too. */
+export function seesFinancials(role: Role | null): boolean {
+  return role === "owner";
+}
+
+/** Owner or trainer: anyone who works with the clients. */
+export function isStaff(role: Role | null): boolean {
+  return role === "owner" || role === "trainer";
+}
+
+export const ROLE_LABEL: Record<Role, string> = {
+  owner: "eigenaar",
+  trainer: "trainer",
+  client: "klant",
+};
 
 export function portalOf(pathname: string): Portal {
   if (pathname.startsWith("/mij")) return "client";

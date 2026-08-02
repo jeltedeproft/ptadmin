@@ -5,6 +5,7 @@ import { EXPORTS, exportCsv } from "../domain/csv";
 import { useAuth } from "../auth/AuthProvider";
 import { hasBackend } from "../db/supabase";
 import SyncPanel from "../components/SyncPanel";
+import { ROLE_LABEL } from "../portals";
 
 function Account() {
   const { session, role, offline, signOut } = useAuth();
@@ -18,7 +19,7 @@ function Account() {
           <div>
             <div className="item-title">{session.user.email}</div>
             <div className="item-sub">
-              Aangemeld als {role === "coach" ? "coach" : "klant"}
+              Aangemeld als {role ? ROLE_LABEL[role] : "onbekend"}
               {offline && " · offline, rol uit het geheugen"}
             </div>
           </div>

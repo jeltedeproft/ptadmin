@@ -1,5 +1,6 @@
 import { useEffect, useState } from "react";
 import { useAuth } from "../auth/AuthProvider";
+import { isStaff } from "../portals";
 import { hasBackend } from "../db/supabase";
 import { lastSyncedAt, pendingCount, syncNow, type SyncResult } from "../sync/engine";
 import { formatDate } from "../domain/dates";
@@ -12,7 +13,7 @@ export default function SyncPanel() {
   const [result, setResult] = useState<SyncResult | null>(null);
 
   async function refresh() {
-    setPending(await pendingCount());
+    setPending(await pendingCount(role ?? "owner"));
     setLast(await lastSyncedAt());
   }
 
@@ -20,13 +21,13 @@ export default function SyncPanel() {
     refresh();
   }, []);
 
-  if (!hasBackend || !session || role !== "coach") return null;
+  if (!hasBackend || !session || !isStaff(role)) return null;
 
   async function run() {
     setBusy(true);
     setResult(null);
     try {
-      const r = await syncNow(session!.user.id);
+      const r = await syncNow(session!.user.id, role!);
       setResult(r);
     } catch (err) {
       setResult({ pushed: 0, pulled: 0, deleted: 0, skipped: 0, errors: [(err as Error).message], at: "" });

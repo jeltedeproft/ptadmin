@@ -43,14 +43,16 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       // Offline, or the profile row has not replicated yet. Fall back to the
       // last known role so a coach with no signal is not locked out of his own
       // app — the server still enforces the real permissions on every request.
-      const cached = localStorage.getItem(ROLE_CACHE) as Role | null;
-      setRole(cached);
+      const cached = localStorage.getItem(ROLE_CACHE);
+      setRole(cached === "owner" || cached === "trainer" ? cached : cached === "client" ? "client" : null);
       setOffline(true);
       return;
     }
 
     setOffline(false);
-    const r = (data?.role as Role | undefined) ?? "client";
+    // Anything unrecognised falls back to client — the least privileged role.
+    const raw = data?.role as string | undefined;
+    const r: Role = raw === "owner" || raw === "trainer" ? raw : "client";
     setRole(r);
     localStorage.setItem(ROLE_CACHE, r);
 

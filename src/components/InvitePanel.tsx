@@ -2,6 +2,7 @@ import { useEffect, useState } from "react";
 import { db } from "../db/db";
 import { supabase, hasBackend, appUrl } from "../db/supabase";
 import { useAuth } from "../auth/AuthProvider";
+import { isStaff } from "../portals";
 import type { Client } from "../db/schema";
 
 type Status = "loading" | "no-email" | "not-synced" | "invited" | "linked" | "error";
@@ -42,7 +43,7 @@ export default function InvitePanel({ client }: { client: Client }) {
     };
   }, [client.id, client.email]);
 
-  if (!hasBackend || role !== "coach") return null;
+  if (!hasBackend || !isStaff(role)) return null;
 
   const message =
     `Hoi ${client.name.split(" ")[0]},\n\n` +
