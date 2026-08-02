@@ -1,6 +1,7 @@
 import type {
   Appointment,
   Client,
+  Evaluation,
   InformEntry,
   Invoice,
   Lead,
@@ -30,7 +31,8 @@ export type TableName =
   | "inform"
   | "invoices"
   | "leads"
-  | "appointments";
+  | "appointments"
+  | "evaluations";
 
 export interface TableSpec<T> {
   /** Dexie table name. */
@@ -367,6 +369,51 @@ export const APPOINTMENTS: TableSpec<Appointment> = {
   },
 };
 
+/** Optional numbers: absent stays absent rather than becoming zero. */
+const optNum = (v: unknown): number | undefined =>
+  v === null || v === undefined || v === "" ? undefined : Number(v);
+
+export const EVALUATIONS: TableSpec<Evaluation> = {
+  local: "evaluations",
+  remote: "evaluations",
+  dependsOn: ["clients"],
+  toRow: (e, coachId, resolve) => {
+    const client = resolve("clients", e.clientId);
+    if (client === undefined) return null;
+    return {
+      coach_id: coachId,
+      client_id: client,
+      date: e.date,
+      weight_kg: e.weightKg ?? null,
+      body_fat_pct: e.bodyFatPct ?? null,
+      waist_cm: e.waistCm ?? null,
+      chest_cm: e.chestCm ?? null,
+      hip_cm: e.hipCm ?? null,
+      arm_cm: e.armCm ?? null,
+      thigh_cm: e.thighCm ?? null,
+      goal: e.goal ?? null,
+      note: e.note ?? null,
+    };
+  },
+  fromRow: (r, unresolve) => {
+    const clientId = unresolve("clients", r.client_id as number);
+    if (clientId === undefined) return null;
+    return {
+      clientId,
+      date: iso(r.date)!,
+      weightKg: optNum(r.weight_kg),
+      bodyFatPct: optNum(r.body_fat_pct),
+      waistCm: optNum(r.waist_cm),
+      chestCm: optNum(r.chest_cm),
+      hipCm: optNum(r.hip_cm),
+      armCm: optNum(r.arm_cm),
+      thighCm: optNum(r.thigh_cm),
+      goal: (r.goal as string) ?? undefined,
+      note: (r.note as string) ?? undefined,
+    };
+  },
+};
+
 /**
  * Push order. Clients first because everything points at them; sessions before
  * transactions and appointments, because both reference a session.
@@ -378,6 +425,7 @@ export const SPECS: TableSpec<any>[] = [
   SESSIONS,
   TRANSACTIONS,
   APPOINTMENTS,
+  EVALUATIONS,
   INFORM,
   INVOICES,
   LEADS,

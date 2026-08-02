@@ -174,6 +174,39 @@ export interface Session {
   note?: string;
 }
 
+/**
+ * One evaluation moment. Measurements are all optional — Yens will not always
+ * take every one, and a half-filled evaluation is still worth recording.
+ */
+export interface Evaluation {
+  id?: number;
+  clientId: number;
+  date: IsoDate;
+  weightKg?: number;
+  bodyFatPct?: number;
+  waistCm?: number;
+  chestCm?: number;
+  hipCm?: number;
+  armCm?: number;
+  thighCm?: number;
+  /** What this period is working towards. */
+  goal?: string;
+  note?: string;
+}
+
+/** The measurable fields, for tables and progress comparisons. */
+export const MEASURES = [
+  { key: "weightKg", label: "Gewicht", unit: "kg", lowerIsBetter: true },
+  { key: "bodyFatPct", label: "Vetpercentage", unit: "%", lowerIsBetter: true },
+  { key: "waistCm", label: "Taille", unit: "cm", lowerIsBetter: true },
+  { key: "chestCm", label: "Borst", unit: "cm", lowerIsBetter: false },
+  { key: "hipCm", label: "Heup", unit: "cm", lowerIsBetter: true },
+  { key: "armCm", label: "Arm", unit: "cm", lowerIsBetter: false },
+  { key: "thighCm", label: "Bovenbeen", unit: "cm", lowerIsBetter: false },
+] as const;
+
+export type MeasureKey = (typeof MEASURES)[number]["key"];
+
 export const APPOINTMENT_STATUSES = ["Gepland", "Afgezegd"] as const;
 export type AppointmentStatus = (typeof APPOINTMENT_STATUSES)[number];
 

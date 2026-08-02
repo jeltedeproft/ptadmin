@@ -2,6 +2,7 @@ import Dexie, { type Table } from "dexie";
 import type {
   Appointment,
   Client,
+  Evaluation,
   InformEntry,
   Invoice,
   Lead,
@@ -46,6 +47,7 @@ export class PtAdminDb extends Dexie {
   syncmeta!: Table<SyncMeta, string>;
   tombstones!: Table<Tombstone, number>;
   appointments!: Table<Appointment, number>;
+  evaluations!: Table<Evaluation, number>;
 
   constructor() {
     super("ptadmin");
@@ -81,6 +83,10 @@ export class PtAdminDb extends Dexie {
     // Planned trainings, ahead of time.
     this.version(6).stores({
       appointments: "++id, date, clientId, status, groupId",
+    });
+    // Evaluations with measurements, so progress is a record rather than a memory.
+    this.version(7).stores({
+      evaluations: "++id, clientId, date",
     });
   }
 }

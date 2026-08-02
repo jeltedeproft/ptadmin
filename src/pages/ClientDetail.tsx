@@ -15,6 +15,7 @@ import { formatDateShort, formatEuro } from "../domain/dates";
 import { useClientOverview } from "../hooks/useData";
 import InvitePanel from "../components/InvitePanel";
 import { removeClientCascade } from "../db/actions";
+import { EvaluationHistory } from "./Evaluations";
 import { SessionModal } from "./Sessions";
 import { TransactionModal } from "./Transactions";
 
@@ -185,6 +186,8 @@ export default function ClientDetail() {
           ))}
         </div>
       )}
+
+      <EvaluationHistory clientId={clientId} />
 
       <InvitePanel client={client} />
 
