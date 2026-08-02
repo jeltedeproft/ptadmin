@@ -16,31 +16,22 @@ Stand op 2 augustus 2026.
 
 Bekende beperkingen, geen verrassingen achteraf.
 
-- **Verwijderen synchroniseert niet.** Een klant lokaal verwijderen laat hem op
-  de server staan, en omgekeerd. De synchronisatie kent voorlopig alleen
-  toevoegen en bijwerken.
-- **Instellingen gaan enkel omhoog.** Ze worden verstuurd maar nooit opgehaald,
-  dus een wijziging op de gsm bereikt de laptop niet.
-- **Klanten kunnen nog niet uitgenodigd worden.** Niets vult
-  `clients.auth_user_id`, dus wie zich aanmeldt komt in een leeg portaal
-  terecht. Er moet een uitnodigingsflow komen die de login aan de klantfiche
-  koppelt.
-- **Synchroniseren is handwerk.** Enkel via de knop onder Meer; er is nog geen
-  automatische ronde bij het opstarten of bij herstel van de verbinding.
-- **Nog nooit echt gedraaid.** De vertaallaag is getest, maar er is nog geen
-  enkel record naar de databank gegaan.
 - **Conflicten: laatste schrijver wint.** Voldoende met één coach. Zodra twee
   mensen dezelfde fiche tegelijk aanpassen, verliest er een.
+- **Facturen versturen loopt via het eigen mailprogramma.** De pdf moet zelf als
+  bijlage toegevoegd worden; een mailtoLink kan dat niet dragen. Echt
+  automatisch versturen vraagt een mailprovider.
+- **Niets is in een browser nagekeken.** De logica zit vol tests, maar geen
+  enkel scherm is met de hand doorlopen.
 
 ## 3. Nog te bouwen
 
-Ruwweg in de volgorde die ik zou aanhouden.
+Afgewerkt sinds de vorige lijst: eerste synchronisatie, uitnodigingsflow,
+verwijderen en instellingen in de synchronisatie, automatisch synchroniseren,
+planning, agenda-uitnodigingen, evaluaties met metingen, facturen versturen
+met herinneringen, en rapporten.
 
-1. **Eerste echte synchronisatie** en repareren wat daarbij bovenkomt.
-2. **Uitnodigingsflow voor klanten** — zonder dat is het klantenportaal leeg.
-3. **Verwijderen en instellingen** meenemen in de synchronisatie.
-4. **Automatisch synchroniseren** bij opstart en bij herstel van de verbinding.
-5. **Planning**: afspraken vooruit inplannen in plaats van enkel achteraf loggen.
+Wat rest:
 6. **Agenda-koppeling.** Twee verschillende mechanismen, bewust:
    - **Klanten** krijgen een agenda-uitnodiging (`.ics`) per mail, of een eigen
      abonneerlink. Geen account, geen toestemmingsscherm, werkt in Google,
@@ -58,10 +49,7 @@ Ruwweg in de volgorde die ik zou aanhouden.
    Yens hetzelfde `.ics`-mechanisme als voor de klanten.
 7. **Programma's** — eerst met Yens uitklaren hoe hij een schema opbouwt.
    Blokken met oefeningen, of een doel per periode met notities? Dat verschil
-   bepaalt het datamodel.
-8. **Evaluaties uitbreiden** met metingen en voortgang.
-9. **Facturen mailen** en betaalherinneringen.
-10. **Rapporten** — in de specificatie zelf al als "later" gemarkeerd.
+   bepaalt het datamodel, en daarop gokken kost meer dan het oplevert.
 
 ## 4. Nog te beslissen
 
