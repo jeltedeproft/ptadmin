@@ -54,6 +54,21 @@ export default function ClientHome({ view = "overzicht" }: { view?: "overzicht" 
     };
   }, [clientId]);
 
+  // Signed in, but no client record matched this address yet.
+  if (clientId === null) {
+    return (
+      <>
+        <h1>Bijna klaar</h1>
+        <p className="sub">Je account bestaat, maar we vinden je gegevens nog niet.</p>
+        <div className="alert">
+          Dat gebeurt wanneer je je aanmeldt met een ander e-mailadres dan het adres dat je coach
+          van je heeft. Vraag hem even welk adres bij jou genoteerd staat, en meld je met dat adres
+          aan.
+        </div>
+      </>
+    );
+  }
+
   if (error) return <Empty>{error}</Empty>;
   if (!mine) return <Empty>Laden…</Empty>;
 

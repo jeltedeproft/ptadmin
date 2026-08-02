@@ -13,6 +13,7 @@ import {
 import { isChargeable, SIGNAL_LABEL } from "../domain/credits";
 import { formatDateShort, formatEuro } from "../domain/dates";
 import { useClientOverview } from "../hooks/useData";
+import InvitePanel from "../components/InvitePanel";
 import { SessionModal } from "./Sessions";
 import { TransactionModal } from "./Transactions";
 
@@ -187,6 +188,8 @@ export default function ClientDetail() {
           ))}
         </div>
       )}
+
+      <InvitePanel client={client} />
 
       <h2>Gevaarlijke zone</h2>
       <button className="btn-danger btn-block" onClick={remove}>

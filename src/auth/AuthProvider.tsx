@@ -60,7 +60,15 @@ export function AuthProvider({ children }: { children: ReactNode }) {
         .select("id")
         .eq("auth_user_id", s.user.id)
         .maybeSingle();
-      setClientId(own?.id ?? null);
+
+      if (own?.id) {
+        setClientId(own.id);
+      } else {
+        // First sign-in: match this login to the client record the coach made,
+        // on the confirmed e-mail address. See migrations/0004_client_claim.sql.
+        const { data: claimed } = await supabase.rpc("claim_client_record");
+        setClientId((claimed as number | null) ?? null);
+      }
     } else {
       setClientId(null);
     }

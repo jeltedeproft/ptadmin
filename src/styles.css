@@ -795,6 +795,19 @@ button:hover,
   box-shadow: 0 1px 3px rgba(0, 0, 0, 0.18);
 }
 
+.invite {
+  background: var(--surface-2);
+  border: 1px solid var(--border);
+  border-radius: 10px;
+  padding: 12px 14px;
+  font-size: 12.5px;
+  line-height: 1.6;
+  white-space: pre-wrap;
+  word-break: break-word;
+  font-family: inherit;
+  margin: 0 0 12px;
+}
+
 .day-today {
   color: var(--accent);
 }
