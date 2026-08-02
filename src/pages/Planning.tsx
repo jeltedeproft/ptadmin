@@ -9,13 +9,15 @@ import {
   SESSION_STATUSES,
   SESSION_TYPES,
   type Appointment,
+  type Client,
   type Location,
   type SessionStatus,
   type SessionType,
 } from "../db/schema";
 import { isChargeable } from "../domain/credits";
+import { buildIcs, downloadIcs, upcoming } from "../domain/ics";
 import { addDays, formatDateShort, startOfWeek, today } from "../domain/dates";
-import { useClients, useSessions } from "../hooks/useData";
+import { useClients, useSessions, useSettings } from "../hooks/useData";
 
 const DAYS = ["Maandag", "Dinsdag", "Woensdag", "Donderdag", "Vrijdag", "Zaterdag", "Zondag"];
 
@@ -47,6 +49,8 @@ export default function Planning() {
           + Afspraak
         </button>
       </div>
+
+      <ExportAgenda appointments={appointments} clients={clients} from={now} />
 
       <div className="monthnav">
         <button aria-label="Vorige week" onClick={() => setWeekStart(addDays(weekStart, -7))}>
@@ -111,6 +115,7 @@ export default function Planning() {
                       </div>
                     </div>
                     <div className="row">
+                      <InviteButton appointment={a} />
                       <button className="btn-sm btn-primary" onClick={() => setCompleting(a)}>
                         Afvinken
                       </button>
@@ -146,6 +151,62 @@ export default function Planning() {
         <CompleteModal appointment={completing} onClose={() => setCompleting(null)} />
       )}
     </>
+  );
+}
+
+/** The coach's own upcoming schedule, as one calendar file. */
+function ExportAgenda({
+  appointments,
+  clients,
+  from,
+}: {
+  appointments: Appointment[];
+  clients: Client[];
+  from: string;
+}) {
+  const settings = useSettings();
+  const ahead = upcoming(appointments, from);
+  if (!settings || ahead.length === 0) return null;
+
+  function download() {
+    const ics = buildIcs(
+      ahead.map((a) => ({
+        appointment: a,
+        clientName: clients.find((c) => c.id === a.clientId)?.name ?? "",
+      })),
+      settings!,
+      "PUBLISH",
+    );
+    downloadIcs(`agenda-${from}`, ics);
+  }
+
+  return (
+    <button className="btn-block" style={{ marginBottom: 14 }} onClick={download}>
+      Zet {ahead.length} afspra{ahead.length === 1 ? "ak" : "ken"} in mijn agenda (.ics)
+    </button>
+  );
+}
+
+/** One invitation for one client, to send by mail. */
+function InviteButton({ appointment }: { appointment: Appointment }) {
+  const settings = useSettings();
+  const clients = useClients();
+  const client = clients?.find((c) => c.id === appointment.clientId);
+  if (!settings || !client) return null;
+
+  function send() {
+    const ics = buildIcs(
+      [{ appointment, clientName: client!.name, clientEmail: client!.email }],
+      settings!,
+      "REQUEST",
+    );
+    downloadIcs(`afspraak-${client!.name.split(" ")[0]}-${appointment.date}`, ics);
+  }
+
+  return (
+    <button className="btn-sm" onClick={send} title="Agenda-uitnodiging voor de klant">
+      Uitnodiging
+    </button>
   );
 }
 

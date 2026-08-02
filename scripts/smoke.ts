@@ -16,6 +16,7 @@ import { nextNumber } from "../src/domain/invoicing";
 import { buildMonthlySeries, buildReport } from "../src/domain/reporting";
 import { barPath, niceMax, ticks } from "../src/components/charts";
 import { toCsv } from "../src/domain/csv";
+import { buildIcs, upcoming } from "../src/domain/ics";
 import { hashCode, makeSalt, sameHash, verifyCode } from "../src/domain/lock";
 import { APPOINTMENTS, CLIENTS, PRICES, SESSIONS, SPECS, TRANSACTIONS } from "../src/sync/rows";
 import { DEFAULT_PRICES, DEFAULT_SETTINGS } from "../src/db/seed";
@@ -470,6 +471,56 @@ console.log("\nsynchronisatie");
       check(`${spec.local} komt na ${dep}`, order.indexOf(dep) < order.indexOf(spec.local), true);
     }
   }
+}
+
+// ---------- agendabestanden ----------
+console.log("\nagenda (.ics)");
+{
+  const settings = { ...DEFAULT_SETTINGS, tradeName: "YENS", email: "coach@example.com", address: "Straat 1, 2627 Schelle" };
+  const appointment = {
+    id: 12, date: "2026-08-10", startTime: "09:30", durationMinutes: 60, clientId: 1,
+    location: "Privéruimte" as const, sessionType: "Solo" as const, status: "Gepland" as const,
+  };
+  const ics = buildIcs([{ appointment, clientName: "Anna Jansen" }], settings);
+  const lines = ics.split("\r\n");
+
+  check("begint en eindigt correct", [lines[0], lines.at(-2)], ["BEGIN:VCALENDAR", "END:VCALENDAR"]);
+  check("regels eindigen op CRLF", ics.includes("\r\n"), true);
+  check("starttijd in lokale tijd zonder Z", lines.includes("DTSTART:20260810T093000"), true);
+  check("eindtijd is start plus duur", lines.includes("DTEND:20260810T103000"), true);
+  check("uid is stabiel per afspraak", lines.includes("UID:appointment-12@ptadmin"), true);
+  check("herinnering twee uur vooraf", lines.includes("TRIGGER:-PT2H"), true);
+
+  // An hour that crosses midnight must roll the date too.
+  const late = buildIcs([{ appointment: { ...appointment, startTime: "23:30" }, clientName: "A" }], settings);
+  check("over middernacht rolt de datum mee", late.includes("DTEND:20260811T003000"), true);
+
+  // Commas and semicolons carry meaning in the format and must be escaped.
+  const tricky = buildIcs([{ appointment: { ...appointment, note: "Let op; knie, links" }, clientName: "A" }], settings);
+  check("puntkomma wordt geëscapet", tricky.includes("Let op\\; knie\\, links"), true);
+  check("nieuwe regel wordt \\n", buildIcs([{ appointment: { ...appointment, note: "een\ntwee" }, clientName: "A" }], settings).includes("een\\ntwee"), true);
+
+  // No line may exceed 75 octets, or strict parsers reject the file.
+  const longNote = buildIcs([{ appointment: { ...appointment, note: "x".repeat(300) }, clientName: "A" }], settings);
+  check("lange regels worden gevouwen", longNote.split("\r\n").every((l) => l.length <= 75), true);
+
+  const invite = buildIcs(
+    [{ appointment, clientName: "Anna Jansen", clientEmail: "anna@example.com" }],
+    settings, "REQUEST",
+  );
+  check("uitnodiging gebruikt METHOD:REQUEST", invite.includes("METHOD:REQUEST"), true);
+  check("uitnodiging bevat de genodigde", invite.includes("mailto:anna@example.com"), true);
+  check("publicatie bevat geen genodigde", ics.includes("ATTENDEE"), false);
+  check("afgezegde afspraak is CANCELLED",
+    buildIcs([{ appointment: { ...appointment, status: "Afgezegd" }, clientName: "A" }], settings).includes("STATUS:CANCELLED"), true);
+
+  check("enkel toekomstige, niet-afgevinkte afspraken",
+    upcoming([
+      appointment,
+      { ...appointment, id: 2, date: "2026-01-01" },
+      { ...appointment, id: 3, sessionId: 5 },
+      { ...appointment, id: 4, status: "Afgezegd" as const },
+    ], "2026-08-01").map((a) => a.id), [12]);
 }
 
 console.log(`\n${failures === 0 ? "Alles in orde." : `${failures} test(s) gefaald.`}`);
