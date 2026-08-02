@@ -6,11 +6,11 @@ Stand op 2 augustus 2026.
 
 | # | Wat | Waarom | Duur |
 |---|-----|--------|------|
-| 1.1 | **Authentication → URL Configuration** in Supabase invullen (zie SETUP.md stap 5) | Zonder dit wijst elke bevestigingsmail naar `localhost:3000` en lijkt de link stuk | 2 min |
-| 1.2 | `supabase/migrations/0003_prices_per_coach.sql` draaien | Anders kan een tweede coach geen eigen prijzen hebben, en faalt de eerste synchronisatie op prijzen | 1 min |
-| 1.3 | **`supabase/tests/rls_test.sql` draaien en het resultaat doorgeven** | Dit is de enige controle dat de ene klant de gegevens van de andere niet ziet. Er komen echte klantgegevens in die databank | 2 min |
-| 1.4 | De coach-account promoveren (SETUP.md stap 4) | Een nieuwe aanmelding is standaard `client`; zonder dit blijft de zaak-omgeving dicht | 1 min |
-| 1.5 | Google Cloud-project **op Yens' account**, OAuth Client ID doorgeven | Nodig voor de agenda-koppeling. Op zijn account omdat het toestemmingsscherm zijn naam toont | 10 min |
+| ~~1.1~~ | ~~Authentication → URL Configuration~~ | **Gedaan** | |
+| ~~1.2~~ | ~~`0003_prices_per_coach.sql`~~ | **Gedaan** | |
+| ~~1.3~~ | ~~`rls_test.sql`~~ | **Gedaan, zonder fouten.** Klant-tot-klant afscherming is daarmee aangetoond | |
+| 1.4 | Een coach-account promoveren (SETUP.md stap 4) | Een nieuwe aanmelding is standaard `client`; zonder dit blijft de zaak-omgeving dicht. Kan met je eigen account, om niet op Yens te moeten wachten | 1 min |
+| 1.5 | Beslissen: heeft Yens **tweerichtings**-synchronisatie nodig? | Zie hieronder. Eenrichting kost geen Google-project en geen verificatie | — |
 
 ## 2. Gaten in wat er al staat
 
@@ -41,8 +41,21 @@ Ruwweg in de volgorde die ik zou aanhouden.
 3. **Verwijderen en instellingen** meenemen in de synchronisatie.
 4. **Automatisch synchroniseren** bij opstart en bij herstel van de verbinding.
 5. **Planning**: afspraken vooruit inplannen in plaats van enkel achteraf loggen.
-6. **Google Agenda**: Edge Function voor de tokenuitwisseling, daarna
-   tweerichtingsverkeer met de planning uit punt 5.
+6. **Agenda-koppeling.** Twee verschillende mechanismen, bewust:
+   - **Klanten** krijgen een agenda-uitnodiging (`.ics`) per mail, of een eigen
+     abonneerlink. Geen account, geen toestemmingsscherm, werkt in Google,
+     Apple en Outlook. Zoals elk boekingssysteem het doet: je stuurt een
+     uitnodiging, je vraagt geen toegang tot iemands agenda.
+   - **Yens** koppelt wél zijn Google-account, maar enkel als hij afspraken ook
+     rechtstreeks in Google aanmaakt en die terug in de app wil zien. Dat vraagt
+     één Google Cloud-project voor de hele app — niet één per gebruiker — plus
+     een Edge Function voor de tokenuitwisseling. Let op: `calendar.events` is
+     een gevoelige scope, dus in Testing-modus verloopt het token elke 7 dagen
+     en moet hij wekelijks opnieuw koppelen. Dat wegwerken vraagt een
+     verificatie bij Google.
+
+   Als eenrichting volstaat, valt dat hele traject weg en gebruiken we voor
+   Yens hetzelfde `.ics`-mechanisme als voor de klanten.
 7. **Programma's** — eerst met Yens uitklaren hoe hij een schema opbouwt.
    Blokken met oefeningen, of een doel per periode met notities? Dat verschil
    bepaalt het datamodel.
