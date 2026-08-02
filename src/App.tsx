@@ -13,6 +13,7 @@ import Leads from "./pages/Leads";
 import Credits from "./pages/Credits";
 import Planning from "./pages/Planning";
 import Programmes from "./pages/Programmes";
+import Reports from "./pages/Reports";
 import Evaluations from "./pages/Evaluations";
 import LockGate from "./components/LockScreen";
 import Login from "./pages/Login";
@@ -123,6 +124,7 @@ function Shell({ role }: { role: Role }) {
           <Route path="/business/sessies" element={<Sessions />} />
           <Route path="/business/inform" element={<Inform />} />
           <Route path="/business/facturen" element={<Invoices />} />
+          <Route path="/business/rapporten" element={<Reports />} />
           <Route path="/business/prijzen" element={<Prices />} />
           <Route path="/business/instellingen" element={<SettingsPage />} />
           <Route path="/business/meer" element={<More />} />

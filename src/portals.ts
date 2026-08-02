@@ -49,6 +49,7 @@ export const NAV: Record<Portal, NavItem[]> = {
     { to: "/business/planning", label: "Planning", icon: ICONS.calendar },
     { to: "/business/credits", label: "Credits", icon: ICONS.card },
     { to: "/business/facturen", label: "Facturen", icon: ICONS.invoice },
+    { to: "/business/rapporten", label: "Rapporten", icon: ICONS.chart },
     { to: "/business/meer", label: "Meer", icon: ICONS.more },
   ],
   client: [
