@@ -1,5 +1,6 @@
 import Dexie, { type Table } from "dexie";
 import type {
+  Appointment,
   Client,
   InformEntry,
   Invoice,
@@ -44,6 +45,7 @@ export class PtAdminDb extends Dexie {
   idmap!: Table<IdMap, [string, number]>;
   syncmeta!: Table<SyncMeta, string>;
   tombstones!: Table<Tombstone, number>;
+  appointments!: Table<Appointment, number>;
 
   constructor() {
     super("ptadmin");
@@ -75,6 +77,10 @@ export class PtAdminDb extends Dexie {
     // no way to know the row should disappear from the server too.
     this.version(5).stores({
       tombstones: "++id, table",
+    });
+    // Planned trainings, ahead of time.
+    this.version(6).stores({
+      appointments: "++id, date, clientId, status, groupId",
     });
   }
 }

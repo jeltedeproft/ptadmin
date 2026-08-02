@@ -1,4 +1,5 @@
 import type {
+  Appointment,
   Client,
   InformEntry,
   Invoice,
@@ -28,7 +29,8 @@ export type TableName =
   | "sessions"
   | "inform"
   | "invoices"
-  | "leads";
+  | "leads"
+  | "appointments";
 
 export interface TableSpec<T> {
   /** Dexie table name. */
@@ -322,9 +324,52 @@ export const LEADS: TableSpec<Lead> = {
   }),
 };
 
+export const APPOINTMENTS: TableSpec<Appointment> = {
+  local: "appointments",
+  remote: "appointments",
+  dependsOn: ["clients", "sessions"],
+  toRow: (a, coachId, resolve) => {
+    const client = resolve("clients", a.clientId);
+    if (client === undefined) return null;
+    return {
+      coach_id: coachId,
+      client_id: client,
+      date: a.date,
+      start_time: a.startTime,
+      duration_minutes: a.durationMinutes,
+      location: a.location,
+      session_type: a.sessionType,
+      status: a.status,
+      group_id: a.groupId ?? null,
+      session_id: a.sessionId === undefined ? null : (resolve("sessions", a.sessionId) ?? null),
+      note: a.note ?? null,
+    };
+  },
+  fromRow: (r, unresolve) => {
+    const clientId = unresolve("clients", r.client_id as number);
+    if (clientId === undefined) return null;
+    return {
+      clientId,
+      date: iso(r.date)!,
+      // Postgres hands back "09:30:00"; the input element wants "09:30".
+      startTime: String(r.start_time ?? "09:00").slice(0, 5),
+      durationMinutes: num(r.duration_minutes) || 60,
+      location: r.location as Appointment["location"],
+      sessionType: r.session_type as Appointment["sessionType"],
+      status: r.status as Appointment["status"],
+      groupId: (r.group_id as string) ?? undefined,
+      sessionId:
+        r.session_id === null || r.session_id === undefined
+          ? undefined
+          : unresolve("sessions", r.session_id as number),
+      note: (r.note as string) ?? undefined,
+    };
+  },
+};
+
 /**
  * Push order. Clients first because everything points at them; sessions before
- * transactions because a losse sessie references the session it paid for.
+ * transactions and appointments, because both reference a session.
  */
 // eslint-disable-next-line @typescript-eslint/no-explicit-any
 export const SPECS: TableSpec<any>[] = [
@@ -332,6 +377,7 @@ export const SPECS: TableSpec<any>[] = [
   PRICES,
   SESSIONS,
   TRANSACTIONS,
+  APPOINTMENTS,
   INFORM,
   INVOICES,
   LEADS,

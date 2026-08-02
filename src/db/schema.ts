@@ -174,6 +174,33 @@ export interface Session {
   note?: string;
 }
 
+export const APPOINTMENT_STATUSES = ["Gepland", "Afgezegd"] as const;
+export type AppointmentStatus = (typeof APPOINTMENT_STATUSES)[number];
+
+/**
+ * A planned training, before it happens.
+ *
+ * One row per participant sharing a groupId, exactly as sessions work — so a
+ * duo is two appointments, and each person can cancel independently. Ticking
+ * one off creates the Session that actually consumes the credit; until then
+ * nothing is charged.
+ */
+export interface Appointment {
+  id?: number;
+  date: IsoDate;
+  /** "09:30", local time. */
+  startTime: string;
+  durationMinutes: number;
+  clientId: number;
+  location: Location;
+  sessionType: SessionType;
+  status: AppointmentStatus;
+  groupId?: string;
+  /** Set once logged as done; points at the session it became. */
+  sessionId?: number;
+  note?: string;
+}
+
 /** Hourly work billed to IN FORM Kontich — a second revenue stream, invoiced monthly. */
 export interface InformEntry {
   id?: number;

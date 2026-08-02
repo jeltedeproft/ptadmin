@@ -1,5 +1,5 @@
 import { db } from "./db";
-import type { Session, SessionStatus } from "./schema";
+import type { Appointment, Session, SessionStatus } from "./schema";
 import { bucketOf, isChargeable, isLooseSale } from "../domain/credits";
 
 /**
@@ -53,7 +53,14 @@ export async function removeRecord(table: SyncedTable, localId: number): Promise
   });
 }
 
-export type SyncedTable = "clients" | "transactions" | "sessions" | "inform" | "invoices" | "leads";
+export type SyncedTable =
+  | "clients"
+  | "transactions"
+  | "sessions"
+  | "inform"
+  | "invoices"
+  | "leads"
+  | "appointments";
 
 /** A client plus everything hanging off them, tombstoned as one unit. */
 export async function removeClientCascade(clientId: number): Promise<void> {
@@ -72,6 +79,43 @@ export async function addSession(session: Session): Promise<number> {
     await linkLooseSale(session, id);
     return id;
   });
+}
+
+/**
+ * Plans one training for one or more people. Nothing is charged here; the
+ * credit only moves when the appointment is later logged as done.
+ */
+export async function planAppointment(
+  base: Omit<Appointment, "id" | "clientId" | "status" | "groupId" | "sessionId">,
+  clientIds: number[],
+): Promise<void> {
+  const groupId = clientIds.length > 1 ? await nextGroupId() : undefined;
+  await db.transaction("rw", db.appointments, async () => {
+    for (const clientId of clientIds) {
+      await db.appointments.add({ ...base, clientId, status: "Gepland", groupId });
+    }
+  });
+}
+
+/**
+ * Turns a planned appointment into the session that actually happened, with
+ * whatever outcome. Credits follow the session's status, exactly as when
+ * logging one directly.
+ */
+export async function completeAppointment(
+  appointment: Appointment,
+  status: SessionStatus,
+): Promise<void> {
+  const sessionId = await addSession({
+    date: appointment.date,
+    clientId: appointment.clientId,
+    location: appointment.location,
+    sessionType: appointment.sessionType,
+    status,
+    groupId: appointment.groupId,
+    note: appointment.note,
+  });
+  await db.appointments.update(appointment.id!, { sessionId });
 }
 
 /** Next free group reference, formatted like G0041. */

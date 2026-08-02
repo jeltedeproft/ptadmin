@@ -17,7 +17,7 @@ import { buildMonthlySeries, buildReport } from "../src/domain/reporting";
 import { barPath, niceMax, ticks } from "../src/components/charts";
 import { toCsv } from "../src/domain/csv";
 import { hashCode, makeSalt, sameHash, verifyCode } from "../src/domain/lock";
-import { CLIENTS, PRICES, SESSIONS, SPECS, TRANSACTIONS } from "../src/sync/rows";
+import { APPOINTMENTS, CLIENTS, PRICES, SESSIONS, SPECS, TRANSACTIONS } from "../src/sync/rows";
 import { DEFAULT_PRICES, DEFAULT_SETTINGS } from "../src/db/seed";
 import type { Client, InformEntry, Session, Transaction } from "../src/db/schema";
 import type { ClientOverview } from "../src/hooks/useData";
@@ -447,6 +447,21 @@ console.log("\nsynchronisatie");
 
   check("prijs houdt zijn eigen sleutel", PRICES.toRow(DEFAULT_PRICES[0], COACH, resolve)!.code, "PR-SOLO-LOS");
   check("prijs heen en terug", PRICES.fromRow(PRICES.toRow(DEFAULT_PRICES[1], COACH, resolve)!, unresolve)!.amount, 650);
+
+  const appt = {
+    id: 4, date: "2026-08-10", startTime: "09:30", durationMinutes: 60, clientId: 1,
+    location: "Privéruimte" as const, sessionType: "Duo" as const,
+    status: "Gepland" as const, groupId: "G0042", sessionId: 5,
+  };
+  const aRow = APPOINTMENTS.toRow(appt, COACH, resolve)!;
+  check("afspraak vertaalt de klant", aRow.client_id, 77);
+  check("afspraak vertaalt de sessie", aRow.session_id, 88);
+  check("startuur gaat mee", aRow.start_time, "09:30");
+  // Postgres returns time as "09:30:00"; the time input needs "09:30".
+  check("uur uit Postgres wordt afgekapt",
+    APPOINTMENTS.fromRow({ ...aRow, start_time: "09:30:00" }, unresolve)!.startTime, "09:30");
+  check("afspraak zonder klant wordt overgeslagen",
+    APPOINTMENTS.toRow({ ...appt, clientId: 999 }, COACH, resolve), null);
 
   // Push order: nothing may be sent before what it points at.
   const order = SPECS.map((s) => s.local);
