@@ -38,15 +38,38 @@ volledig afgeschermd door de RLS uit stap 2.
 > De **service_role** sleutel staat er ook. Die omzeilt alle RLS. Zet die
 > nooit in de app, nooit in de repo, en stuur hem me niet door.
 
-## 4. Jezelf coach maken
+## 4. Rollen toekennen
+
+Er zijn drie rollen:
+
+| Rol | Ziet |
+|-----|------|
+| `owner` | Alles: klanten én cijfers. Yens, en later je vader als tweede eigenaar met zijn eigen zaak. |
+| `trainer` | Enkel de mensen: klanten, sessies, afspraken, evaluaties, opvolging. Nooit geld. |
+| `client` | Enkel zijn eigen gegevens. |
 
 Een nieuwe login is standaard `client` — een aanmelding maakt van niemand per
-ongeluk een coach. Na Yens' eerste aanmelding, in de SQL Editor:
+ongeluk een eigenaar. Na de eerste aanmelding, in de SQL Editor:
 
 ```sql
-update public.profiles set role = 'coach'
+-- Eigenaar van zijn eigen zaak
+update public.profiles
+set role = 'owner', owner_id = id
 where id = (select id from auth.users where email = 'ydeproft@gmail.com');
 ```
+
+Een trainer in dienst van Yens komt er later zo bij:
+
+```sql
+update public.profiles
+set role = 'trainer',
+    owner_id = (select id from auth.users where email = 'ydeproft@gmail.com')
+where id = (select id from auth.users where email = 'nieuwe.trainer@example.com');
+```
+
+`owner_id` is de zaak waarvoor iemand werkt. Bij een eigenaar wijst dat naar
+zichzelf; bij een trainer naar zijn werkgever. Vergeet dat veld niet, anders
+ziet die persoon niets.
 
 ## 5. Terugkeer-URL's instellen
 
