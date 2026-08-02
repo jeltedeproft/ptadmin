@@ -13,9 +13,11 @@
 -- existing rows keep working untouched.
 
 -- ------------------------------------------------------------- profiles
+-- Order matters: a CHECK constraint is validated against existing rows the
+-- moment it is created. Adding it before renaming the roles would fail on every
+-- row that still says 'coach'. So the old constraint comes off, the data is
+-- migrated, and only then does the new constraint go on.
 alter table public.profiles drop constraint if exists profiles_role_check;
-alter table public.profiles
-  add constraint profiles_role_check check (role in ('owner', 'trainer', 'client'));
 
 -- Which business this login belongs to. An owner points at themselves.
 alter table public.profiles
@@ -23,7 +25,15 @@ alter table public.profiles
 
 -- Existing coaches become owners of their own business.
 update public.profiles set role = 'owner' where role = 'coach';
+-- Anything else unrecognised drops to the least privileged role rather than
+-- blocking the migration.
+update public.profiles set role = 'client'
+where role not in ('owner', 'trainer', 'client');
+
 update public.profiles set owner_id = id where role = 'owner' and owner_id is null;
+
+alter table public.profiles
+  add constraint profiles_role_check check (role in ('owner', 'trainer', 'client'));
 
 comment on column public.profiles.owner_id is
   'The business this login works for. Self for an owner, the employer for a trainer, null for a client.';
