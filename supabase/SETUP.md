@@ -48,7 +48,22 @@ update public.profiles set role = 'coach'
 where id = (select id from auth.users where email = 'ydeproft@gmail.com');
 ```
 
-## 5. E-mail instellen
+## 5. Terugkeer-URL's instellen
+
+Zonder deze stap wijst de bevestigingsmail naar `http://localhost:3000` — de
+standaard van Supabase — en lijkt de link niets te doen.
+
+**Authentication → URL Configuration**:
+
+- **Site URL**: `https://jeltedeproft.github.io/ptadmin/`
+- **Redirect URLs**, één per regel:
+  - `https://jeltedeproft.github.io/ptadmin/`
+  - `http://localhost:5173/`
+
+Zet er geen `#/...` achter. De router gebruikt dat deel van de URL zelf, en
+Supabase vergelijkt de volledige string met deze lijst.
+
+## 6. E-mail instellen
 
 **Authentication → Providers → Email**: laat "Confirm email" aan staan.
 Voor de gratis tier volstaat de ingebouwde mail; bij meer volume koppel je

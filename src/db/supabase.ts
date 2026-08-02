@@ -21,6 +21,10 @@ export const supabase: SupabaseClient | null = hasBackend
         persistSession: true,
         autoRefreshToken: true,
         detectSessionInUrl: true,
+        // PKCE returns the token as ?code= in the query string. The implicit
+        // flow puts it in the hash fragment, which this app already uses for
+        // routing — the two would fight over the same part of the URL.
+        flowType: "pkce",
       },
     })
   : null;
@@ -28,4 +32,13 @@ export const supabase: SupabaseClient | null = hasBackend
 export function requireSupabase(): SupabaseClient {
   if (!supabase) throw new Error("Geen backend geconfigureerd (VITE_SUPABASE_URL ontbreekt).");
   return supabase;
+}
+
+/**
+ * Where Supabase should send people back to after a confirmation or reset mail.
+ * Deliberately without the hash: the router owns that, and a stray `#/route`
+ * in the redirect makes the link fail Supabase's allow-list check.
+ */
+export function appUrl(): string {
+  return window.location.origin + window.location.pathname;
 }

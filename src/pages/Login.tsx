@@ -1,6 +1,6 @@
 import { useState } from "react";
 import { Field } from "../components/ui";
-import { requireSupabase } from "../db/supabase";
+import { appUrl, requireSupabase } from "../db/supabase";
 
 type Mode = "in" | "up" | "reset";
 
@@ -38,14 +38,16 @@ export default function Login() {
         const { error } = await sb.auth.signInWithPassword({ email, password });
         if (error) throw error;
       } else if (mode === "up") {
-        const { error } = await sb.auth.signUp({ email, password });
+        const { error } = await sb.auth.signUp({
+          email,
+          password,
+          options: { emailRedirectTo: appUrl() },
+        });
         if (error) throw error;
         setNotice("Account aangemaakt. Bevestig de link in je mailbox en meld je daarna aan.");
         setMode("in");
       } else {
-        const { error } = await sb.auth.resetPasswordForEmail(email, {
-          redirectTo: window.location.origin + window.location.pathname,
-        });
+        const { error } = await sb.auth.resetPasswordForEmail(email, { redirectTo: appUrl() });
         if (error) throw error;
         setNotice("We stuurden een herstelmail. Kijk in je mailbox.");
         setMode("in");
