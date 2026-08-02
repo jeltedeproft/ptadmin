@@ -19,6 +19,7 @@ import Login from "./pages/Login";
 import ClientHome from "./pages/ClientHome";
 import { AuthProvider, useAuth } from "./auth/AuthProvider";
 import { hasBackend } from "./db/supabase";
+import { useAutoSync } from "./sync/useAutoSync";
 import { NAV, PORTALS, portalOf, portalsFor, type Portal, type Role } from "./portals";
 
 function Icon({ d }: { d: string }) {
@@ -65,6 +66,7 @@ function Gate() {
 function Shell({ role }: { role: Role }) {
   const location = useLocation();
   const navigate = useNavigate();
+  const { running } = useAutoSync();
   const available = portalsFor(role);
   const home = PORTALS[available[0]].home;
   // A client landing on a coach URL is sent home rather than shown empty screens.
@@ -84,6 +86,7 @@ function Shell({ role }: { role: Role }) {
       </nav>
 
       <main className="main">
+        {running && <div className="syncing">Synchroniseren…</div>}
         {available.length > 1 && (
           <div className="portalbar">
             {available.map((p) => (
