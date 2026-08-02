@@ -5,6 +5,7 @@ import { removeRecord } from "../db/actions";
 import { INVOICE_STATUSES, type Invoice, type InvoiceStatus } from "../db/schema";
 import { addDays, formatDateShort, formatEuro, today } from "../domain/dates";
 import { downloadInvoicePdf, nextNumber } from "../domain/invoicing";
+import { invoiceMail, needsReminder, reminderLabel, reminderMail } from "../domain/mail";
 import { useClients, useInvoices, useSettings, useTransactions } from "../hooks/useData";
 
 export default function Invoices() {
@@ -61,6 +62,7 @@ export default function Invoices() {
   const unpaidTotal = invoices
     .filter((i) => i.status !== "Betaald" && i.status !== "Geannuleerd")
     .reduce((s, i) => s + i.amount, 0);
+  const overdue = needsReminder(invoices);
 
   return (
     <>
@@ -86,6 +88,43 @@ export default function Invoices() {
                 <button className="btn-sm btn-primary" onClick={() => invoiceTransaction(t.id!)}>
                   Factuur maken
                 </button>
+              </div>
+            ))}
+          </div>
+        </>
+      )}
+
+      {overdue.length > 0 && (
+        <>
+          <h2>Te laat</h2>
+          <div className="list">
+            {overdue.map((i) => (
+              <div key={i.id} className="tone-open">
+                <div>
+                  <div className="item-title">
+                    {i.number} — {formatEuro(i.amount)}
+                  </div>
+                  <div className="item-sub">
+                    {i.recipientName} · {reminderLabel(i)}
+                  </div>
+                </div>
+                <div className="row">
+                  {i.recipientEmail && (
+                    <a
+                      className="btn btn-sm"
+                      href={reminderMail(i, settings).href}
+                      onClick={() => db.invoices.update(i.id!, { reminderSentOn: today() })}
+                    >
+                      Herinner
+                    </a>
+                  )}
+                  <button
+                    className="btn-sm btn-primary"
+                    onClick={() => db.invoices.update(i.id!, { status: "Betaald", paidOn: today() })}
+                  >
+                    Betaald
+                  </button>
+                </div>
               </div>
             ))}
           </div>
@@ -208,6 +247,34 @@ function InvoiceModal({ invoice, onClose }: { invoice: Invoice; onClose: () => v
           Download PDF
         </button>
       </div>
+
+      {settings && invoice.recipientEmail && (
+        <>
+          <button
+            className="btn-block"
+            style={{ marginTop: 10 }}
+            onClick={async () => {
+              // The PDF has to be downloaded separately: no browser lets a
+              // mailto link carry an attachment.
+              await downloadInvoicePdf(invoice, settings);
+              await db.invoices.update(invoice.id!, {
+                status: "Verzonden",
+                sentOn: today(),
+              });
+              window.location.href = invoiceMail(invoice, settings).href;
+            }}
+          >
+            Versturen per e-mail
+          </button>
+          <p className="sub" style={{ marginTop: 8 }}>
+            De pdf wordt gedownload en je mailprogramma opent met de tekst erbij. Voeg de pdf zelf
+            nog toe als bijlage — een mailtoLink kan dat niet voor je doen.
+          </p>
+        </>
+      )}
+      {invoice.sentOn && (
+        <p className="sub">Verstuurd op {formatDateShort(invoice.sentOn)}.</p>
+      )}
       <button className="btn-block" style={{ marginTop: 10 }} onClick={onClose}>
         Sluiten
       </button>

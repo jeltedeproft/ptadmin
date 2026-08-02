@@ -17,6 +17,7 @@ import { buildMonthlySeries, buildReport } from "../src/domain/reporting";
 import { barPath, niceMax, ticks } from "../src/components/charts";
 import { toCsv } from "../src/domain/csv";
 import { buildIcs, upcoming } from "../src/domain/ics";
+import { invoiceMail, needsReminder, reminderMail } from "../src/domain/mail";
 import { hashCode, makeSalt, sameHash, verifyCode } from "../src/domain/lock";
 import { APPOINTMENTS, CLIENTS, PRICES, SESSIONS, SPECS, TRANSACTIONS } from "../src/sync/rows";
 import { DEFAULT_PRICES, DEFAULT_SETTINGS } from "../src/db/seed";
@@ -521,6 +522,42 @@ console.log("\nagenda (.ics)");
       { ...appointment, id: 3, sessionId: 5 },
       { ...appointment, id: 4, status: "Afgezegd" as const },
     ], "2026-08-01").map((a) => a.id), [12]);
+}
+
+// ---------- facturen versturen ----------
+console.log("\nfacturen versturen");
+{
+  const s = { ...DEFAULT_SETTINGS, businessName: "Y De P", iban: "BE00 0000 0000 0000" };
+  const inv = {
+    id: 1, number: "2026-004", date: "2026-06-01", dueDate: "2026-06-15",
+    type: "Eigen klant" as const, recipientName: "Anna Jansen",
+    recipientEmail: "anna@example.com", lines: [], vatAmount: 0, amount: 650,
+    status: "Verzonden" as const, sourceType: "transaction" as const, sourceIds: [],
+  };
+
+  const mail = invoiceMail(inv, s);
+  check("factuurmail gaat naar de klant", mail.to, "anna@example.com");
+  check("onderwerp bevat het nummer", mail.subject, "Factuur 2026-004");
+  check("mailtoLink is opgebouwd", mail.href.startsWith("mailto:anna%40example.com?subject="), true);
+  check("bedrag staat in de tekst", mail.body.includes("650"), true);
+  check("mededeling staat in de tekst", mail.body.includes('"2026-004"'), true);
+
+  const first = reminderMail(inv, s, "2026-07-01");
+  check("eerste herinnering telt de dagen", first.body.includes("16 dagen geleden"), true);
+  check("eerste herinnering in het onderwerp", first.subject, "Herinnering factuur 2026-004");
+
+  const again = reminderMail({ ...inv, reminderSentOn: "2026-07-01" }, s, "2026-07-20");
+  check("tweede herinnering wordt herkend", again.subject.startsWith("Tweede herinnering"), true);
+  check("tweede herinnering verwijst naar de eerste", again.body.includes("1 juli 2026"), true);
+
+  const list = [
+    inv,
+    { ...inv, id: 2, status: "Betaald" as const },
+    { ...inv, id: 3, status: "Concept" as const },
+    { ...inv, id: 4, status: "Geannuleerd" as const },
+    { ...inv, id: 5, dueDate: "2027-01-01" },
+  ];
+  check("enkel te late, openstaande facturen", needsReminder(list, "2026-07-01").map((i) => i.id), [1]);
 }
 
 console.log(`\n${failures === 0 ? "Alles in orde." : `${failures} test(s) gefaald.`}`);

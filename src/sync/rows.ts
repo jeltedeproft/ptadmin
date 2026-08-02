@@ -258,6 +258,8 @@ export const INVOICES: TableSpec<Invoice> = {
     amount: i.amount,
     status: i.status,
     paid_on: i.paidOn ?? null,
+    sent_on: i.sentOn ?? null,
+    reminder_sent_on: i.reminderSentOn ?? null,
     source_type: i.sourceType ?? null,
     // Local source ids are meaningless remotely; the invoice keeps its own copy
     // of the lines, so nothing is lost by dropping them.
@@ -281,6 +283,8 @@ export const INVOICES: TableSpec<Invoice> = {
     amount: num(r.amount),
     status: r.status as Invoice["status"],
     paidOn: iso(r.paid_on),
+    sentOn: iso(r.sent_on),
+    reminderSentOn: iso(r.reminder_sent_on),
     sourceType: (r.source_type as Invoice["sourceType"]) ?? "transaction",
     sourceIds: [],
     note: (r.note as string) ?? undefined,

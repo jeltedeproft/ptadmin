@@ -271,6 +271,8 @@ export interface Invoice {
   amount: number;
   status: InvoiceStatus;
   paidOn?: IsoDate;
+  sentOn?: IsoDate;
+  reminderSentOn?: IsoDate;
   /** Ids of the transactions / inform entries this invoice was generated from. */
   sourceType: "transaction" | "inform";
   sourceIds: number[];
