@@ -86,6 +86,10 @@ begin
 
   insert into public.leads (coach_id, name) values (coach_a, 'Prospect');
 
+  -- Settings, so coach_contact has a row to expose.
+  insert into public.settings (coach_id, data)
+  values (coach_a, '{"tradeName":"YENS","whatsappNumber":"+32 470 12 34 56","iban":"BE00 GEHEIM"}'::jsonb);
+
   insert into public.invoices (coach_id, client_id, number, date, due_date, type,
                                recipient_name, amount)
   values (coach_a, ca_id, '2026-001', current_date, current_date, 'Eigen klant', 'Anna', 650),
@@ -133,7 +137,9 @@ end $$;
 
 -- -------------------------------------------------------------- client view
 do $$
-declare a uuid := current_setting('pg_temp.cli_a')::uuid;
+declare
+  a uuid := current_setting('pg_temp.cli_a')::uuid;
+  blocked boolean;
 begin
   perform pg_temp.act_as(a);
   perform pg_temp.expect('klant ziet enkel zichzelf',
@@ -150,6 +156,22 @@ begin
     (select count(*) from public.leads), 0);
   perform pg_temp.expect('klant ziet GEEN instellingen',
     (select count(*) from public.settings), 0);
+
+  -- But wél de contactgegevens van zijn eigen coach, zonder iets financieels.
+  perform pg_temp.expect('klant ziet de contactgegevens van zijn coach',
+    (select count(*) from public.coach_contact), 1);
+
+  begin
+    perform 1 from public.coach_contact where iban is not null;
+    blocked := false;
+  exception when undefined_column then blocked := true;
+  end;
+  if not blocked then
+    perform pg_temp.as_admin();
+    raise exception 'FAIL iban is zichtbaar via coach_contact';
+  end if;
+  raise notice 'ok   coach_contact bevat geen iban';
+
   perform pg_temp.as_admin();
 end $$;
 

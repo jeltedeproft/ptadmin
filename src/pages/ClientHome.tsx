@@ -27,15 +27,15 @@ function AskCoach({ clientName }: { clientName: string }) {
   useEffect(() => {
     if (!supabase) return;
     let alive = true;
-    // The coach's number travels with the settings row, not in the code.
+    // Not from `settings` — that row is owner-only and holds the IBAN and the
+    // invoice numbering. coach_contact exposes just the contact fields.
     supabase
-      .from("settings")
-      .select("data")
+      .from("coach_contact")
+      .select("whatsapp_number")
       .maybeSingle()
       .then(({ data }) => {
         if (!alive) return;
-        const d = data?.data as { whatsappNumber?: string } | undefined;
-        setNumber(d?.whatsappNumber ?? null);
+        setNumber((data?.whatsapp_number as string | null) ?? null);
       });
     return () => {
       alive = false;
