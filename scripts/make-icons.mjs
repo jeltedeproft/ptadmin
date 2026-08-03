@@ -6,8 +6,8 @@ import { dirname, join } from "node:path";
 import { fileURLToPath } from "node:url";
 
 const OUT = join(dirname(fileURLToPath(import.meta.url)), "..", "public");
-const BG = [15, 23, 42];
-const FG = [79, 156, 249];
+const BG = [18, 19, 17];
+const FG = [197, 184, 159];
 
 function crc32(buf) {
   let c = ~0;

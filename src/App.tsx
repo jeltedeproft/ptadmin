@@ -75,8 +75,10 @@ function Shell({ role }: { role: Role }) {
   const portal = available.includes(requested) ? requested : available[0];
   const items = NAV[portal];
 
+  // data-world drives the accent colour for the whole shell: sand for the
+  // client, sage for coaching, blue-grey for business. One brand, three worlds.
   return (
-    <div className="app">
+    <div className="app" data-world={portal}>
       <nav className="nav">
         {items.map((t) => (
           <NavLink key={t.to} to={t.to} end={t.to === `/${portal}` || t.to === "/coach" || t.to === "/mij"}>

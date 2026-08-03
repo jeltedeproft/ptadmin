@@ -1,0 +1,208 @@
+/*
+ * YENS design tokens.
+ *
+ * Straight from "Vormgeving en design APP". The intent is warm dark, natural
+ * accents, strong typography and a lot of calm — deliberately not classic
+ * fitness software, and deliberately not blue SaaS.
+ *
+ * One brand, three worlds: everything below is shared, and only the accent
+ * changes per world (see [data-world] at the bottom). The accent supports
+ * orientation; it is never the loudest thing on screen.
+ */
+
+:root {
+  /* ---------- surfaces, dark (the default) ---------- */
+  --bg: #121311; /* warm near-black, never pure black */
+  --panel: #181a17; /* navigation and larger sections */
+  --surface: #20221e; /* cards and interactive blocks */
+  --surface-2: #292c27; /* hover, selected */
+  --border: #343730; /* 1px, very low contrast */
+
+  /* ---------- ink ---------- */
+  --text: #f0eee8; /* warm off-white */
+  --text-2: #a8aaa2;
+  --muted: #74776f;
+
+  /* ---------- brand ---------- */
+  --sand: #c5b89f;
+  --sand-strong: #d3c8b4; /* large buttons */
+  --sand-ink: #181916; /* text on a sand button */
+
+  /* Per-world accents. Overridden by [data-world] below. */
+  --accent: var(--sand);
+  --accent-ink: var(--sand-ink);
+
+  /* ---------- status ---------- */
+  /* Muted on purpose: red means act, not "a number went down". */
+  --ok: #7e9a83;
+  --warn: #b89b66;
+  --crit: #b8756e;
+  --info: #7e91a2;
+  --neutral: #777b73;
+
+  /* ---------- data marks ---------- */
+  /*
+   * The brand tones read as grey once they become a chart mark: measured
+   * against the card surface they fall below the chroma floor, and muted red
+   * against muted blue-grey scores 11.4 — below the 15 threshold where even
+   * full-colour vision separates them reliably.
+   *
+   * So charts keep the brand *hues* and take a stronger step of each. Verified
+   * with the palette validator in both modes: worst colourblind separation
+   * 16.9 dark / 19.6 light, against a target of 8.
+   */
+  --series-1: #b5883c; /* zand, stepped for data */
+  --series-2: #4e86be; /* blauwgrijs, stepped for data */
+  --series-3: #c05c4e; /* roodbruin, stepped for data */
+  --grid: #2a2d27;
+  --axis: #3d413a;
+
+  /* ---------- shape ---------- */
+  --r-sm: 8px; /* inputs, buttons */
+  --r-md: 12px; /* cards */
+  --r-lg: 16px; /* large panels */
+  --r-pill: 999px; /* small status labels only */
+
+  /* ---------- spacing, 4px system ---------- */
+  --s-1: 4px;
+  --s-2: 8px;
+  --s-3: 12px;
+  --s-4: 16px;
+  --s-6: 24px;
+  --s-8: 32px;
+  --s-12: 48px;
+  --s-16: 64px;
+
+  /* ---------- type ---------- */
+  --font: "Manrope Variable", "Manrope", system-ui, -apple-system, "Segoe UI", sans-serif;
+  --t-page: 28px;
+  --t-section: 20px;
+  --t-card: 16px;
+  --t-body: 15px;
+  --t-sub: 13.5px;
+  --t-label: 11.5px;
+  --t-figure: 34px;
+
+  /* ---------- motion ---------- */
+  --fast: 170ms;
+  --slow: 280ms;
+  --ease: cubic-bezier(0.2, 0, 0.2, 1);
+
+  --nav-h: 62px;
+  color-scheme: dark;
+}
+
+/*
+ * Light theme. Warm beige-white, never office white — the design doc is
+ * explicit that a hard white would break the feel.
+ *
+ * Coach and business open dark by default; a client may prefer light. The
+ * media query follows the device, and [data-theme] lets a choice win.
+ */
+@media (prefers-color-scheme: light) {
+  :root:not([data-theme="dark"]) {
+    --bg: #f3f1eb;
+    --panel: #efece4;
+    --surface: #faf9f5;
+    --surface-2: #ffffff;
+    --border: #dddad2;
+
+    --text: #1b1d19;
+    --text-2: #666a62;
+    --muted: #8a8d84;
+
+    --sand: #8a7a5c;
+    --sand-strong: #7d6e51;
+    --sand-ink: #ffffff;
+
+    --ok: #4f7256;
+    --warn: #8a6a2c;
+    --crit: #a2453d;
+    --info: #4c6478;
+
+    --series-1: #96681a;
+    --series-2: #2a6db4;
+    --series-3: #af4335;
+    --grid: #e6e2d8;
+    --axis: #cdc8bc;
+
+    color-scheme: light;
+  }
+}
+
+:root[data-theme="light"] {
+  --bg: #f3f1eb;
+  --panel: #efece4;
+  --surface: #faf9f5;
+  --surface-2: #ffffff;
+  --border: #dddad2;
+
+  --text: #1b1d19;
+  --text-2: #666a62;
+  --muted: #8a8d84;
+
+  --sand: #8a7a5c;
+  --sand-strong: #7d6e51;
+  --sand-ink: #ffffff;
+
+  --ok: #4f7256;
+  --warn: #8a6a2c;
+  --crit: #a2453d;
+  --info: #4c6478;
+
+  --series-1: #96681a;
+  --series-2: #2a6db4;
+  --series-3: #af4335;
+  --grid: #e6e2d8;
+  --axis: #cdc8bc;
+
+  color-scheme: light;
+}
+
+/*
+ * One accent per world. Sand for the client, sage for coaching, blue-grey for
+ * business — enough to know where you are, never enough to shout.
+ */
+[data-world="client"] {
+  --accent: #c5b89f;
+  --accent-ink: #181916;
+}
+
+[data-world="coach"] {
+  --accent: #8fa292;
+  --accent-ink: #161a17;
+}
+
+[data-world="business"] {
+  --accent: #8797a3;
+  --accent-ink: #14181a;
+}
+
+/* Light mode needs darker accents to hold contrast against a pale surface. */
+@media (prefers-color-scheme: light) {
+  :root:not([data-theme="dark"]) [data-world="client"] {
+    --accent: #8a7a5c;
+    --accent-ink: #ffffff;
+  }
+  :root:not([data-theme="dark"]) [data-world="coach"] {
+    --accent: #4e6b54;
+    --accent-ink: #ffffff;
+  }
+  :root:not([data-theme="dark"]) [data-world="business"] {
+    --accent: #4d626f;
+    --accent-ink: #ffffff;
+  }
+}
+
+:root[data-theme="light"] [data-world="client"] {
+  --accent: #8a7a5c;
+  --accent-ink: #ffffff;
+}
+:root[data-theme="light"] [data-world="coach"] {
+  --accent: #4e6b54;
+  --accent-ink: #ffffff;
+}
+:root[data-theme="light"] [data-world="business"] {
+  --accent: #4d626f;
+  --accent-ink: #ffffff;
+}
