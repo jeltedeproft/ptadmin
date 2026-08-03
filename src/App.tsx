@@ -11,7 +11,7 @@ import Prices from "./pages/Prices";
 import SettingsPage from "./pages/Settings";
 import Leads from "./pages/Leads";
 import Credits from "./pages/Credits";
-import Planning from "./pages/Planning";
+import Agenda from "./pages/Agenda";
 import Programmes from "./pages/Programmes";
 import Reports from "./pages/Reports";
 import Evaluations from "./pages/Evaluations";
@@ -114,13 +114,15 @@ function Shell({ role }: { role: Role }) {
           {/* Coach — the training relationship */}
           <Route path="/coach" element={<Clients />} />
           <Route path="/coach/klanten/:id" element={<ClientDetail />} />
+          <Route path="/coach/agenda" element={<Agenda />} />
           <Route path="/coach/programmas" element={<Programmes />} />
           <Route path="/coach/evaluaties" element={<Evaluations />} />
           <Route path="/coach/opvolging" element={<Leads />} />
 
           {/* Business — the company */}
           <Route path="/business" element={<Dashboard />} />
-          <Route path="/business/planning" element={<Planning />} />
+          {/* De agenda hoort bij de coach; oude links blijven werken. */}
+          <Route path="/business/planning" element={<Navigate to="/coach/agenda" replace />} />
           <Route path="/business/credits" element={<Credits />} />
           <Route path="/business/verkopen" element={<Transactions />} />
           <Route path="/business/sessies" element={<Sessions />} />

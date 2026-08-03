@@ -46,13 +46,13 @@ export const PORTALS: Record<Portal, { label: string; hint: string; home: string
 export const NAV: Record<Portal, NavItem[]> = {
   coach: [
     { to: "/coach", label: "Klanten", icon: ICONS.users },
+    { to: "/coach/agenda", label: "Agenda", icon: ICONS.calendar },
     { to: "/coach/programmas", label: "Programma's", icon: ICONS.clipboard },
     { to: "/coach/evaluaties", label: "Evaluaties", icon: ICONS.chart },
     { to: "/coach/opvolging", label: "Opvolging", icon: ICONS.more },
   ],
   business: [
     { to: "/business", label: "Dashboard", icon: ICONS.home },
-    { to: "/business/planning", label: "Planning", icon: ICONS.calendar },
     { to: "/business/credits", label: "Credits", icon: ICONS.card },
     { to: "/business/facturen", label: "Facturen", icon: ICONS.invoice },
     { to: "/business/rapporten", label: "Rapporten", icon: ICONS.chart },

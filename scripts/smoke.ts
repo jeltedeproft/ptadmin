@@ -19,10 +19,11 @@ import { toCsv } from "../src/domain/csv";
 import { buildIcs, upcoming } from "../src/domain/ics";
 import { invoiceMail, needsReminder, reminderMail } from "../src/domain/mail";
 import { toWhatsAppNumber, whatsAppLink } from "../src/domain/whatsapp";
+import { blockLabel, gridRange, layout, minutesOf, timeOf, toBlocks } from "../src/domain/agenda";
 import { hashCode, makeSalt, sameHash, verifyCode } from "../src/domain/lock";
 import { APPOINTMENTS, CLIENTS, PRICES, SESSIONS, SPECS, TRANSACTIONS } from "../src/sync/rows";
 import { DEFAULT_PRICES, DEFAULT_SETTINGS } from "../src/db/seed";
-import type { Client, InformEntry, Session, Transaction } from "../src/db/schema";
+import type { Appointment, Client, InformEntry, Session, Transaction } from "../src/db/schema";
 import type { ClientOverview } from "../src/hooks/useData";
 
 let failures = 0;
@@ -582,6 +583,102 @@ console.log("\nwhatsapp");
   check("link is een wa.me-adres", link?.startsWith("https://wa.me/32470123456?text="), true);
   check("bericht is url-veilig", link?.includes("Dag%20Anna"), true);
   check("geen nummer geeft geen link", whatsAppLink(""), null);
+}
+
+// ---------- agenda ----------
+console.log("\nagenda");
+{
+  const appt = (
+    id: number,
+    date: string,
+    startTime: string,
+    durationMinutes = 60,
+    extra: Partial<Appointment> = {},
+  ): Appointment => ({
+    id,
+    date,
+    startTime,
+    durationMinutes,
+    clientId: id,
+    location: "Privéruimte",
+    sessionType: "Solo",
+    status: "Gepland",
+    ...extra,
+  });
+
+  check("uren naar minuten", [minutesOf("00:00"), minutesOf("09:30"), minutesOf("23:59")], [0, 570, 1439]);
+  check("minuten terug naar uren", [timeOf(0), timeOf(570), timeOf(1439)], ["00:00", "09:30", "23:59"]);
+
+  // A duo is two rows sharing a groupId; drawn naively they cover each other.
+  const duo = toBlocks([
+    appt(1, "2026-08-10", "09:00", 60, { groupId: "G0001" }),
+    appt(2, "2026-08-10", "09:00", 60, { groupId: "G0001" }),
+  ]);
+  check("duo wordt één blok", duo.length, 1);
+  check("beide deelnemers zitten erin", duo[0].appointments.length, 2);
+  check("blok loopt van 9 tot 10", [duo[0].start, duo[0].end], [540, 600]);
+
+  // Same group id on a different day is a different training.
+  check(
+    "zelfde groep op een andere dag blijft apart",
+    toBlocks([
+      appt(1, "2026-08-10", "09:00", 60, { groupId: "G0001" }),
+      appt(2, "2026-08-11", "09:00", 60, { groupId: "G0001" }),
+    ]).length,
+    2,
+  );
+
+  check(
+    "afgevinkt pas als iedereen afgevinkt is",
+    toBlocks([
+      appt(1, "2026-08-10", "09:00", 60, { groupId: "G0002", sessionId: 5 }),
+      appt(2, "2026-08-10", "09:00", 60, { groupId: "G0002" }),
+    ])[0].done,
+    false,
+  );
+
+  // Two unrelated clients at the same hour must sit side by side.
+  const clash = layout(toBlocks([appt(1, "2026-08-10", "09:00"), appt(2, "2026-08-10", "09:00")]));
+  check("overlap krijgt twee kolommen", clash.map((b) => b.columns), [2, 2]);
+  check("elk een eigen kolomindex", clash.map((b) => b.column).sort(), [0, 1]);
+
+  // Back to back is not an overlap.
+  const chain = layout(toBlocks([appt(1, "2026-08-10", "09:00"), appt(2, "2026-08-10", "10:00")]));
+  check("aansluitend is geen overlap", chain.map((b) => b.columns), [1, 1]);
+
+  // Partial overlap still shares the width.
+  const partial = layout(toBlocks([appt(1, "2026-08-10", "09:00", 90), appt(2, "2026-08-10", "10:00")]));
+  check("gedeeltelijke overlap deelt de breedte", partial.map((b) => b.columns), [2, 2]);
+
+  // A third at the same time takes a third of the width.
+  const three = layout(
+    toBlocks([appt(1, "2026-08-10", "09:00"), appt(2, "2026-08-10", "09:00"), appt(3, "2026-08-10", "09:00")]),
+  );
+  check("drie tegelijk geeft drie kolommen", three[0].columns, 3);
+
+  // Different days never collide.
+  const days = layout(toBlocks([appt(1, "2026-08-10", "09:00"), appt(2, "2026-08-11", "09:00")]));
+  check("andere dag botst niet", days.map((b) => b.columns), [1, 1]);
+
+  check("standaard werkdag", gridRange([]), [7, 21]);
+  check("vroege afspraak verbreedt het raster",
+    gridRange(toBlocks([appt(1, "2026-08-10", "06:30")]))[0], 6);
+  check("late afspraak verbreedt het raster",
+    gridRange(toBlocks([appt(1, "2026-08-10", "21:30", 60)]))[1], 23);
+
+  const nameOf = (id: number) => ["", "Anna Jansen", "Bram Peeters", "Cis De Wit"][id] ?? "";
+  check("solo toont de naam", blockLabel(duo[0], () => "Anna Jansen"), "Anna Jansen + Anna Jansen");
+  check("groep van drie kort samengevat",
+    blockLabel(
+      toBlocks([
+        appt(1, "2026-08-10", "09:00", 60, { groupId: "G3" }),
+        appt(2, "2026-08-10", "09:00", 60, { groupId: "G3" }),
+        appt(3, "2026-08-10", "09:00", 60, { groupId: "G3" }),
+      ])[0],
+      nameOf,
+    ),
+    "Anna Jansen +2",
+  );
 }
 
 console.log(`\n${failures === 0 ? "Alles in orde." : `${failures} test(s) gefaald.`}`);
