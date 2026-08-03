@@ -3,6 +3,7 @@ import { buildLedger, isChargeable, signalFor } from "../src/domain/credits";
 import {
   addMonths,
   daysBetween,
+  daysUntilBirthday,
   formatEuro,
   monthRange,
   monthsElapsed,
@@ -20,6 +21,7 @@ import { buildIcs, upcoming } from "../src/domain/ics";
 import { invoiceMail, needsReminder, reminderMail } from "../src/domain/mail";
 import { toWhatsAppNumber, whatsAppLink } from "../src/domain/whatsapp";
 import { blockLabel, gridRange, layout, minutesOf, timeOf, toBlocks } from "../src/domain/agenda";
+
 import { hashCode, makeSalt, sameHash, verifyCode } from "../src/domain/lock";
 import { APPOINTMENTS, CLIENTS, PRICES, SESSIONS, SPECS, TRANSACTIONS } from "../src/sync/rows";
 import { DEFAULT_PRICES, DEFAULT_SETTINGS } from "../src/db/seed";
@@ -679,6 +681,19 @@ console.log("\nagenda");
     ),
     "Anna Jansen +2",
   );
+}
+
+// ---------- verjaardagen ----------
+console.log("\nverjaardagen");
+{
+  check("jarig vandaag", daysUntilBirthday("1990-08-03", "2026-08-03"), 0);
+  check("jarig over vier dagen", daysUntilBirthday("1990-08-07", "2026-08-03"), 4);
+  // Al geweest dit jaar: dan telt de volgende, niet een negatief getal.
+  check("al geweest telt naar volgend jaar", daysUntilBirthday("1990-08-01", "2026-08-03"), 363);
+  // Over de jaargrens heen blijft het een klein getal.
+  check("over de jaarwissel", daysUntilBirthday("1990-01-02", "2026-12-30"), 3);
+  check("29 februari in een gewoon jaar", daysUntilBirthday("1992-02-29", "2026-02-01") !== null, true);
+  check("geen geboortedatum", daysUntilBirthday("", "2026-08-03"), null);
 }
 
 console.log(`\n${failures === 0 ? "Alles in orde." : `${failures} test(s) gefaald.`}`);

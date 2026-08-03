@@ -58,6 +58,24 @@ export function monthKey(s: IsoDate): string {
   return s.slice(0, 7);
 }
 
+/**
+ * Days until the next birthday, ignoring the year — so a date already past
+ * this year counts towards the next one instead of going negative.
+ */
+export function daysUntilBirthday(birthDate: IsoDate, from: IsoDate): number | null {
+  if (birthDate.length < 10) return null;
+  const [, month, day] = birthDate.split("-").map(Number);
+  if (!month || !day) return null;
+
+  const fromYear = Number(from.slice(0, 4));
+  for (const year of [fromYear, fromYear + 1]) {
+    const candidate = `${year}-${String(month).padStart(2, "0")}-${String(day).padStart(2, "0")}`;
+    const diff = daysBetween(from, candidate);
+    if (diff >= 0) return diff;
+  }
+  return null;
+}
+
 /** "2026-08" for the month containing `d`. */
 export function currentMonthKey(d = new Date()): string {
   return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, "0")}`;

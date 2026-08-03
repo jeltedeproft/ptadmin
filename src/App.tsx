@@ -12,6 +12,8 @@ import SettingsPage from "./pages/Settings";
 import Leads from "./pages/Leads";
 import Credits from "./pages/Credits";
 import Agenda from "./pages/Agenda";
+import CoachHome from "./pages/CoachHome";
+import Coaching from "./pages/Coaching";
 import Programmes from "./pages/Programmes";
 import Reports from "./pages/Reports";
 import Evaluations from "./pages/Evaluations";
@@ -112,9 +114,11 @@ function Shell({ role }: { role: Role }) {
           <Route path="/mij/pakketten" element={<ClientHome view="pakketten" />} />
 
           {/* Coach — the training relationship */}
-          <Route path="/coach" element={<Clients />} />
-          <Route path="/coach/klanten/:id" element={<ClientDetail />} />
+          <Route path="/coach" element={<CoachHome />} />
           <Route path="/coach/agenda" element={<Agenda />} />
+          <Route path="/coach/klanten" element={<Clients />} />
+          <Route path="/coach/klanten/:id" element={<ClientDetail />} />
+          <Route path="/coach/coaching" element={<Coaching />} />
           <Route path="/coach/programmas" element={<Programmes />} />
           <Route path="/coach/evaluaties" element={<Evaluations />} />
           <Route path="/coach/opvolging" element={<Leads />} />
@@ -135,7 +139,7 @@ function Shell({ role }: { role: Role }) {
 
           {/* Old links from before the split. */}
           <Route path="/" element={<Navigate to={home} replace />} />
-          <Route path="/klanten" element={<Navigate to="/coach" replace />} />
+          <Route path="/klanten" element={<Navigate to="/coach/klanten" replace />} />
           <Route path="/klanten/:id" element={<LegacyClient />} />
           <Route path="/sessies" element={<Navigate to="/business/sessies" replace />} />
           <Route path="/verkopen" element={<Navigate to="/business/verkopen" replace />} />

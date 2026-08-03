@@ -176,6 +176,7 @@ export default function Agenda() {
                   <button
                     key={b.key}
                     className={`agenda-block${b.done ? " is-done" : ""}`}
+                    data-type={b.appointments[0].sessionType}
                     style={{
                       top: ((b.start - fromHour * 60) / 60) * HOUR_PX,
                       height: ((b.end - b.start) / 60) * HOUR_PX - 2,

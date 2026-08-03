@@ -2,7 +2,7 @@
 // Enum values are kept in Dutch exactly as they appear in the sheet's dropdowns,
 // so data migrated from the workbook stays comparable.
 
-export const CLIENT_STATUSES = ["Actief", "Gepauzeerd", "Stopgezet"] as const;
+export const CLIENT_STATUSES = ["Intake", "Actief", "Gepauzeerd", "Stopgezet"] as const;
 export type ClientStatus = (typeof CLIENT_STATUSES)[number];
 
 export const LOCATIONS = ["Privéruimte", "Aan huis", "Online"] as const;
@@ -100,6 +100,8 @@ export interface Client {
   status: ClientStatus;
   startDate: IsoDate;
   location: Location;
+  /** Waar deze klant naartoe werkt — staat op de klantkaart. */
+  goal?: string;
   lastEvaluation?: IsoDate;
   nextEvaluation?: IsoDate;
   email?: string;
