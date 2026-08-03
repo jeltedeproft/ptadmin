@@ -86,17 +86,27 @@ Het grootste blok, en het meest waardevolle voor de coaching zelf.
 
 ## Waar ik nu al voor waarschuw
 
-**Medische gegevens.** De nota vraagt om blessures, operaties, medicatie,
-contra-indicaties, pijnmeldingen en groen licht van een arts. Dat maakt van de
-app van je broer een verwerker van **gezondheidsgegevens**, dezelfde categorie
-als bij je vader. Dat vraagt uitdrukkelijke toestemming, een strikter
-bewaarbeleid en een verwerkersregister. Dit is de zwaarste consequentie in het
-hele document en ze staat er terloops in.
+**Medische gegevens: toestemming wordt nu vastgelegd.** Yens vraagt het al bij
+de intake, wat klopt. Maar toestemming vragen en toestemming kúnnen aantonen
+zijn twee verschillende dingen: bij een klacht telt enkel wat je kan laten
+zien. Daarom staat er nu per klant een datum én de versie van de tekst waarmee
+akkoord werd gegaan, met de tekst zelf erbij op het scherm. Intrekken wist de
+datum.
 
-**Video kost geld en bandbreedte.** Oefenvideo's en video's die klanten
-uploaden zijn geen tekstvelden. Supabase Storage rekent per gigabyte en per
-transfer. Dat vraagt een keuze: eigen opslag, of video's die elders staan
-(YouTube unlisted, Vimeo) en enkel gelinkt worden.
+Wat nog moet: een bewaartermijn afspreken, en een verwerkersregister opstellen.
+Dat laatste is een document, geen code.
+
+**Video: beslist.** Oefenvideo's komen op YouTube (niet-vermeld) en de app
+bewaart enkel de link. Geen opslagkosten, geen bandbreedte, en Yens kan een
+video vervangen zonder de app aan te raken.
+
+De video's bestaan nog niet, dus een oefening zonder link toont straks een
+rustige placeholder op de plaats waar de video komt — niet een kapot kader en
+niet een lege ruimte. De oefening blijft bruikbaar met enkel tekst en cues.
+
+Video's die klanten zelf uploaden (techniek laten nakijken) zijn een aparte
+vraag: die kunnen niet op YouTube en vragen wél opslag. Voorlopig lost
+WhatsApp dat op.
 
 **Zelf boeken verandert de creditlogica.** De nota introduceert
 *gereserveerde* credits naast vrije en verbruikte. Een geboekte afspraak houdt
@@ -108,9 +118,15 @@ best in één keer goed.
 gewichten laten oplopen bij iemand met pijn of een medische context is geen
 software-beslissing. Voorstel doen, coach laat goedkeuren.
 
-**Chat is meer dan een berichtenveld.** Realtime, meldingen, bewaartermijn, en
-de vraag of Yens bereikbaar wil zijn buiten werkuren. Dat laatste is een
-bedrijfsbeslissing, geen technische.
+**Chat: beslist, en niet gebouwd.** Geen berichten in de app. Een klant tikt op
+de WhatsApp-knop en komt in een gesprek met Yens; hij doet hetzelfde vanaf de
+klantfiche. Dat is bewust: een inbox in de app belooft stilzwijgend
+bereikbaarheid rond de klok, en dit houdt het gesprek waar beiden toch al
+zitten. Staat er.
+
+Wat daarmee vervalt uit de nota: de interne inbox, berichten gekoppeld aan een
+oefening of check-in, en de berichtsjablonen. Als dat later toch nodig blijkt,
+is het een aparte beslissing en geen vergetelheid.
 
 ## Wat ik niet zou bouwen
 

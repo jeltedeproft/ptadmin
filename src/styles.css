@@ -928,6 +928,17 @@ details.more > summary::-webkit-details-marker {
   pointer-events: none;
 }
 
+.consent-text {
+  margin: var(--s-3) 0;
+  padding: var(--s-3) var(--s-4);
+  border-left: 2px solid var(--border);
+  background: var(--surface-2);
+  border-radius: 0 var(--r-sm) var(--r-sm) 0;
+  font-size: var(--t-sub);
+  line-height: 1.6;
+  color: var(--text-2);
+}
+
 .day-today {
   color: var(--accent);
 }

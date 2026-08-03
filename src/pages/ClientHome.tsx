@@ -5,12 +5,54 @@ import { supabase } from "../db/supabase";
 import { buildLedger, isChargeable } from "../domain/credits";
 import type { Session, Transaction } from "../db/schema";
 import { formatDate, formatDateShort, formatEuro } from "../domain/dates";
+import { clientToCoachMessage, whatsAppLink } from "../domain/whatsapp";
 
 interface Mine {
   name: string;
   nextEvaluation?: string;
   transactions: Transaction[];
   sessions: Session[];
+}
+
+/**
+ * Reaching the coach.
+ *
+ * Deliberately WhatsApp rather than a chat inside the app: an inbox here would
+ * quietly promise round-the-clock availability, and this way the conversation
+ * lives where both of them already are.
+ */
+function AskCoach({ clientName }: { clientName: string }) {
+  const [number, setNumber] = useState<string | null>(null);
+
+  useEffect(() => {
+    if (!supabase) return;
+    let alive = true;
+    // The coach's number travels with the settings row, not in the code.
+    supabase
+      .from("settings")
+      .select("data")
+      .maybeSingle()
+      .then(({ data }) => {
+        if (!alive) return;
+        const d = data?.data as { whatsappNumber?: string } | undefined;
+        setNumber(d?.whatsappNumber ?? null);
+      });
+    return () => {
+      alive = false;
+    };
+  }, []);
+
+  const link = whatsAppLink(number ?? undefined, clientToCoachMessage(clientName));
+  if (!link) return null;
+
+  return (
+    <a className="btn btn-primary btn-block" href={link} target="_blank" rel="noreferrer" style={{ marginTop: 12 }}>
+      <svg viewBox="0 0 24 24" width="17" height="17" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round">
+        <path d="M21 15.5v3a2 2 0 0 1-2.2 2 19.8 19.8 0 0 1-8.6-3.1 19.5 19.5 0 0 1-6-6A19.8 19.8 0 0 1 1.1 2.8 2 2 0 0 1 3.1.5h3a2 2 0 0 1 2 1.7c.1 1 .4 1.9.7 2.8a2 2 0 0 1-.5 2.1L7.1 8.4a16 16 0 0 0 6 6l1.3-1.3a2 2 0 0 1 2.1-.4c.9.3 1.8.6 2.8.7a2 2 0 0 1 1.7 2z" />
+      </svg>
+      Stel je coach een vraag
+    </a>
+  );
 }
 
 /**
@@ -175,6 +217,8 @@ export default function ClientHome({ view = "overzicht" }: { view?: "overzicht" 
           </div>
         </Card>
       )}
+
+      <AskCoach clientName={mine.name} />
 
       <h2>Laatste trainingen</h2>
       {done.length === 0 ? (

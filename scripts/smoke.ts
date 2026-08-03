@@ -18,6 +18,7 @@ import { barPath, niceMax, ticks } from "../src/components/charts";
 import { toCsv } from "../src/domain/csv";
 import { buildIcs, upcoming } from "../src/domain/ics";
 import { invoiceMail, needsReminder, reminderMail } from "../src/domain/mail";
+import { toWhatsAppNumber, whatsAppLink } from "../src/domain/whatsapp";
 import { hashCode, makeSalt, sameHash, verifyCode } from "../src/domain/lock";
 import { APPOINTMENTS, CLIENTS, PRICES, SESSIONS, SPECS, TRANSACTIONS } from "../src/sync/rows";
 import { DEFAULT_PRICES, DEFAULT_SETTINGS } from "../src/db/seed";
@@ -558,6 +559,29 @@ console.log("\nfacturen versturen");
     { ...inv, id: 5, dueDate: "2027-01-01" },
   ];
   check("enkel te late, openstaande facturen", needsReminder(list, "2026-07-01").map((i) => i.id), [1]);
+}
+
+// ---------- whatsapp ----------
+console.log("\nwhatsapp");
+{
+  // wa.me wants international digits only: no plus, no spaces, no leading zero.
+  check("internationaal met spaties", toWhatsAppNumber("+32 470 12 34 56"), "32470123456");
+  check("nationaal krijgt landcode", toWhatsAppNumber("0470 12 34 56"), "32470123456");
+  check("00-prefix wordt landcode", toWhatsAppNumber("0032470123456"), "32470123456");
+  check("nederlands nummer blijft nederlands", toWhatsAppNumber("+31 620 74 73 27"), "31620747327");
+  // The bracketed zero is a national trunk prefix and must not survive next to
+  // a country code — "320470…" would be a dead link.
+  check("streepjes en haakjes eruit", toWhatsAppNumber("+32 (0)470-12.34.56"), "32470123456");
+  check("haakjesnul verdwijnt ook na 0032", toWhatsAppNumber("0032 (0)470 12 34 56"), "32470123456");
+  check("leeg geeft niets", toWhatsAppNumber(undefined), null);
+  check("onzin geeft niets", toWhatsAppNumber("geen nummer"), null);
+  check("te kort geeft niets", toWhatsAppNumber("+32 12"), null);
+  check("te lang geeft niets", toWhatsAppNumber("+3212345678901234567"), null);
+
+  const link = whatsAppLink("+32 470 12 34 56", "Dag Anna, YENS hier.");
+  check("link is een wa.me-adres", link?.startsWith("https://wa.me/32470123456?text="), true);
+  check("bericht is url-veilig", link?.includes("Dag%20Anna"), true);
+  check("geen nummer geeft geen link", whatsAppLink(""), null);
 }
 
 console.log(`\n${failures === 0 ? "Alles in orde." : `${failures} test(s) gefaald.`}`);

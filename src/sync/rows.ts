@@ -69,6 +69,10 @@ export const CLIENTS: TableSpec<Client> = {
     billing_address: c.billingAddress ?? null,
     company_number: c.companyNumber ?? null,
     note: c.note ?? null,
+    consent_health_on: c.consentHealthOn ?? null,
+    consent_health_version: c.consentHealthVersion ?? null,
+    consent_photos_on: c.consentPhotosOn ?? null,
+    consent_photos_version: c.consentPhotosVersion ?? null,
   }),
   fromRow: (r) => ({
     name: r.name as string,
@@ -84,6 +88,10 @@ export const CLIENTS: TableSpec<Client> = {
     billingAddress: (r.billing_address as string) ?? undefined,
     companyNumber: (r.company_number as string) ?? undefined,
     note: (r.note as string) ?? undefined,
+    consentHealthOn: iso(r.consent_health_on),
+    consentHealthVersion: (r.consent_health_version as string) ?? undefined,
+    consentPhotosOn: iso(r.consent_photos_on),
+    consentPhotosVersion: (r.consent_photos_version as string) ?? undefined,
   }),
 };
 

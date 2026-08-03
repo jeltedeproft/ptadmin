@@ -107,6 +107,19 @@ export interface Client {
   billingAddress?: string;
   companyNumber?: string;
   note?: string;
+
+  /**
+   * Consent, recorded rather than assumed.
+   *
+   * Health details — injuries, medication, contra-indications — are a special
+   * category under GDPR. Asking at the start is not enough: it has to be
+   * demonstrable afterwards, which means storing when it was given and which
+   * text was agreed to. Withdrawal clears the date.
+   */
+  consentHealthOn?: IsoDate;
+  consentHealthVersion?: string;
+  consentPhotosOn?: IsoDate;
+  consentPhotosVersion?: string;
 }
 
 /**
@@ -290,6 +303,8 @@ export interface Settings {
   iban: string;
   email: string;
   phone: string;
+  /** Number clients reach him on. Used for the WhatsApp button. */
+  whatsappNumber: string;
   /** Logo for the invoice header, stored as a data: URI. Falls back to the trade name. */
   logoDataUrl?: string;
   paymentTermDays: number;
@@ -310,6 +325,15 @@ export interface Settings {
   socialExemptionThreshold: number;
   socialMainOccupationThreshold: number;
   estimatedBusinessCosts: number;
+
+  /**
+   * The consent texts, and the version stamped onto a client when they agree.
+   * Bump the version whenever the wording changes materially — old consents
+   * then visibly refer to the old text instead of silently inheriting the new.
+   */
+  consentVersion: string;
+  consentHealthText: string;
+  consentPhotosText: string;
 
   /** Days before a pack expires that it should start showing up as an alert. */
   packExpiryWarningDays: number;

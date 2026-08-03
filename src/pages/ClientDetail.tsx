@@ -12,8 +12,10 @@ import {
 } from "../db/schema";
 import { isChargeable, SIGNAL_LABEL } from "../domain/credits";
 import { formatDateShort, formatEuro } from "../domain/dates";
-import { useClientOverview } from "../hooks/useData";
+import { useClientOverview, useSettings } from "../hooks/useData";
+import { coachToClientMessage, whatsAppLink } from "../domain/whatsapp";
 import InvitePanel from "../components/InvitePanel";
+import ConsentPanel from "../components/ConsentPanel";
 import { removeClientCascade } from "../db/actions";
 import { EvaluationHistory } from "./Evaluations";
 import { SessionModal } from "./Sessions";
@@ -62,6 +64,7 @@ export default function ClientDetail() {
         </button>
         <button onClick={() => setAddingSale(true)}>Verkoop</button>
         <button onClick={() => setEditing(true)}>Bewerk</button>
+        <WhatsAppButton client={client} />
       </div>
 
       <div className="grid">
@@ -189,6 +192,8 @@ export default function ClientDetail() {
 
       <EvaluationHistory clientId={clientId} />
 
+      <ConsentPanel client={client} />
+
       <InvitePanel client={client} />
 
       <h2>Gevaarlijke zone</h2>
@@ -200,6 +205,25 @@ export default function ClientDetail() {
       {loggingSession && <SessionModal clientId={clientId} onClose={() => setLoggingSession(false)} />}
       {addingSale && <TransactionModal clientId={clientId} onClose={() => setAddingSale(false)} />}
     </>
+  );
+}
+
+/** Opens WhatsApp with this client, from the coach's side. */
+function WhatsAppButton({ client }: { client: Client }) {
+  const settings = useSettings();
+  const link = whatsAppLink(
+    client.phone,
+    coachToClientMessage(client.name.split(" ")[0], settings?.tradeName || settings?.businessName || ""),
+  );
+  if (!link) return null;
+
+  return (
+    <a className="btn" href={link} target="_blank" rel="noreferrer">
+      <svg viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round">
+        <path d="M21 15.5v3a2 2 0 0 1-2.2 2 19.8 19.8 0 0 1-8.6-3.1 19.5 19.5 0 0 1-6-6A19.8 19.8 0 0 1 1.1 2.8 2 2 0 0 1 3.1.5h3a2 2 0 0 1 2 1.7c.1 1 .4 1.9.7 2.8a2 2 0 0 1-.5 2.1L7.1 8.4a16 16 0 0 0 6 6l1.3-1.3a2 2 0 0 1 2.1-.4c.9.3 1.8.6 2.8.7a2 2 0 0 1 1.7 2z" />
+      </svg>
+      WhatsApp
+    </a>
   );
 }
 

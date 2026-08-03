@@ -50,6 +50,7 @@ export const DEFAULT_SETTINGS: Settings = {
   iban: "",
   email: "",
   phone: "",
+  whatsappNumber: "",
   paymentTermDays: 14,
   nextInvoiceNumber: "2026-001",
   vatNote:
@@ -69,6 +70,17 @@ export const DEFAULT_SETTINGS: Settings = {
   socialExemptionThreshold: 1922.16,
   socialMainOccupationThreshold: 17374.08,
   estimatedBusinessCosts: 5000,
+
+  consentVersion: "2026-08",
+  consentHealthText:
+    "Ik geef toestemming om gezondheidsgegevens bij te houden die nodig zijn om veilig te " +
+    "trainen: blessures, operaties, medicatie, klachten en eventuele beperkingen. Deze " +
+    "gegevens worden enkel gebruikt om mijn training aan te passen, worden niet gedeeld met " +
+    "derden, en ik kan deze toestemming op elk moment intrekken.",
+  consentPhotosText:
+    "Ik geef toestemming om voortgangsfoto's te bewaren bij mijn evaluaties. Deze foto's " +
+    "worden enkel gebruikt om mijn eigen vooruitgang op te volgen, worden nooit publiek " +
+    "gedeeld, en ik kan deze toestemming op elk moment intrekken.",
 
   packExpiryWarningDays: 30,
   evaluationLookaheadDays: 14,
