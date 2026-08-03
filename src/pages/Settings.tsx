@@ -66,17 +66,20 @@ export default function SettingsPage() {
         </Field>
       </div>
 
-      <Field label="WhatsApp-nummer voor klanten">
+      <Field label="WhatsApp-nummer voor klanten (optioneel)">
         <input
           type="tel"
-          placeholder="+32 470 12 34 56"
+          placeholder={form.phone || "+32 470 12 34 56"}
           value={form.whatsappNumber}
           onChange={(e) => set("whatsappNumber", e.target.value)}
         />
       </Field>
       <p className="sub">
-        Hierop komen klanten bij je terecht als ze in hun eigen scherm op de WhatsApp-knop tikken.
-        Laat leeg om die knop te verbergen.
+        {form.whatsappNumber.trim()
+          ? "Hierop komen klanten terecht als ze op de WhatsApp-knop tikken."
+          : form.phone.trim()
+            ? `Leeg, dus klanten komen uit op je telefoonnummer ${form.phone}. Vul enkel iets in als WhatsApp op een ander nummer staat.`
+            : "Vul hierboven een telefoonnummer in, of hier een apart WhatsApp-nummer. Zonder een van beide blijft de knop verborgen."}
       </p>
 
       <Field label="Logo op de factuur">
