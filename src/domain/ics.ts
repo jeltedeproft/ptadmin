@@ -94,7 +94,7 @@ export function buildIcs(
       `DTSTART:${stamp(a.date, a.startTime)}`,
       `DTEND:${stamp(endDate, endTime)}`,
       `SUMMARY:${esc(`${title} — ${brand}`)}`,
-      `LOCATION:${esc(a.location === "Aan huis" ? "Bij jou thuis" : a.location === "Online" ? "Online" : settings.address || "Privéruimte")}`,
+      `LOCATION:${esc(a.location === "Aan huis" ? "Bij jou thuis" : settings.address || "Privéruimte")}`,
       `DESCRIPTION:${esc([`${a.sessionType} · ${a.durationMinutes} minuten`, a.note, clientName].filter(Boolean).join("\n"))}`,
       `ORGANIZER;CN=${esc(brand)}:mailto:${organiser}`,
       a.status === "Afgezegd" ? "STATUS:CANCELLED" : "STATUS:CONFIRMED",

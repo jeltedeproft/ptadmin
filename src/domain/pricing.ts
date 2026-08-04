@@ -4,7 +4,6 @@ import { addDays, today } from "./dates";
 const LOCATION_PREFIX: Record<Location, string> = {
   Privéruimte: "PR",
   "Aan huis": "AH",
-  Online: "ON",
 };
 
 const TYPE_PART: Record<PricedSessionType, string> = {

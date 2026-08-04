@@ -27,6 +27,7 @@ import { APPOINTMENTS, CLIENTS, PRICES, SESSIONS, SPECS, TRANSACTIONS } from "..
 import { DEFAULT_PRICES, DEFAULT_SETTINGS } from "../src/db/seed";
 import {
   APPOINTMENT_TYPES,
+  LOCATIONS,
   SESSION_TYPES,
   defaultDuration,
   hasEditableDuration,
@@ -70,12 +71,11 @@ check("maanden verstreken volgend jaar", monthsElapsed(2027, "2026-08-01"), 0);
 console.log("\npricing");
 check("productcode privéruimte solo pakket", buildProductCode("Privéruimte", "Solo", "Pakket 10"), "PR-SOLO-10");
 check("productcode aan huis semi los", buildProductCode("Aan huis", "Semi PT", "Losse sessie"), "AH-SEMI-LOS");
-check("productcode online solo pakket", buildProductCode("Online", "Solo", "Pakket 10"), "ON-SOLO-10");
 check("prijs PR-SOLO-10", findPrice(DEFAULT_PRICES, "Privéruimte", "Solo", "Pakket 10")?.amount, 650);
 check("geldigheid AH-SOLO-10", findPrice(DEFAULT_PRICES, "Aan huis", "Solo", "Pakket 10")?.validityMonths, 6);
-check("online losse sessie kost 40", findPrice(DEFAULT_PRICES, "Online", "Solo", "Losse sessie")?.amount, 40);
-check("online pakket kost 10x40", findPrice(DEFAULT_PRICES, "Online", "Duo", "Pakket 10")?.amount, 400);
-check("elke locatie/type/product heeft een prijs", DEFAULT_PRICES.length, 18);
+check("twee locaties x drie types x twee producten", DEFAULT_PRICES.length, 12);
+check("Online is geen locatie meer", (LOCATIONS as readonly string[]).includes("Online"), false);
+check("geen online prijzen meer", DEFAULT_PRICES.some((p) => p.code.startsWith("ON-")), false);
 check("alle SKU's oplosbaar", DEFAULT_PRICES.every((p) => findPrice(DEFAULT_PRICES, p.location, p.sessionType, p.product)?.code === p.code), true);
 check("geen dubbele codes", new Set(DEFAULT_PRICES.map((p) => p.code)).size, DEFAULT_PRICES.length);
 

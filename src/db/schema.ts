@@ -5,7 +5,7 @@
 export const CLIENT_STATUSES = ["Intake", "Actief", "Gepauzeerd", "Stopgezet"] as const;
 export type ClientStatus = (typeof CLIENT_STATUSES)[number];
 
-export const LOCATIONS = ["Privéruimte", "Aan huis", "Online"] as const;
+export const LOCATIONS = ["Privéruimte", "Aan huis"] as const;
 export type Location = (typeof LOCATIONS)[number];
 
 /** Session types that can be sold as a product (the PRIJZEN matrix covers these three). */

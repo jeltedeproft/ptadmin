@@ -106,6 +106,37 @@ async function migrateRecords(): Promise<void> {
     await db.prices.update(p.code, { baseCode: p.code });
   }
 
+  // Online is gone as a location. Anything still on it moves to "Aan huis" —
+  // the nearest meaning, since both are "not in the private room" — and the
+  // client keeps a note so the history is not quietly rewritten.
+  // Mirrors migrations/0014_drop_online.sql for the local copy.
+  const ONLINE = "Online";
+  for (const c of await db.clients.toArray()) {
+    if ((c.location as string) !== ONLINE) continue;
+    const mark = "Trainde online (locatie Online is afgeschaft).";
+    await db.clients.update(c.id!, {
+      location: "Aan huis",
+      note: c.note?.includes(mark) ? c.note : [c.note, mark].filter(Boolean).join("\n"),
+    });
+  }
+  for (const [table, rows] of [
+    ["sessions", await db.sessions.toArray()],
+    ["transactions", await db.transactions.toArray()],
+    ["appointments", await db.appointments.toArray()],
+  ] as const) {
+    for (const row of rows as { id?: number; location: string }[]) {
+      if (row.location !== ONLINE) continue;
+      await (db as unknown as Record<string, { update(k: number, v: unknown): Promise<number> }>)[
+        table
+      ].update(row.id!, { location: "Aan huis" });
+    }
+  }
+  for (const p of await db.prices.toArray()) {
+    // Never sold — a transaction keeps its own amount and productcode, so
+    // removing these rows cannot affect a past sale.
+    if ((p.location as string) === ONLINE) await db.prices.delete(p.code);
+  }
+
   const invoices = await db.invoices.toArray();
   for (const inv of invoices) {
     const needsLines = inv.lines.some((l) => l.quantity === undefined);

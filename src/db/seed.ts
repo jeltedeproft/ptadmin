@@ -1,12 +1,10 @@
 import type { PriceItem, Settings } from "./schema";
 
 /**
- * Tabel A of the PRIJZEN sheet, plus Online.
+ * Tabel A of the PRIJZEN sheet.
  *
- * Online was missing from the workbook entirely. Yens set it at €40 per hour;
- * that rate is applied flat across all three session types, and the 10-pack is
- * simply 10 × €40 with no volume discount and the same 4 months validity as
- * Privéruimte. Those two fill-ins are guesses — adjust on the Prijzen screen.
+ * Online stond hier ook in, maar is afgeschaft: het was een eenmalige
+ * uitzondering en geen aanbod. Zie migrations/0014_drop_online.sql.
  */
 export const DEFAULT_PRICES: PriceItem[] = [
   // Privéruimte — packs valid 4 months
@@ -23,13 +21,6 @@ export const DEFAULT_PRICES: PriceItem[] = [
   { code: "AH-DUO-10", baseCode: "AH-DUO-10", location: "Aan huis", sessionType: "Duo", product: "Pakket 10", amount: 460, credits: 10, validityMonths: 6, active: true },
   { code: "AH-SEMI-LOS", baseCode: "AH-SEMI-LOS", location: "Aan huis", sessionType: "Semi PT", product: "Losse sessie", amount: 40, credits: 1, validityMonths: 0, active: true },
   { code: "AH-SEMI-10", baseCode: "AH-SEMI-10", location: "Aan huis", sessionType: "Semi PT", product: "Pakket 10", amount: 360, credits: 10, validityMonths: 6, active: true },
-  // Online — flat €40/uur, packs valid 4 months
-  { code: "ON-SOLO-LOS", baseCode: "ON-SOLO-LOS", location: "Online", sessionType: "Solo", product: "Losse sessie", amount: 40, credits: 1, validityMonths: 0, active: true },
-  { code: "ON-SOLO-10", baseCode: "ON-SOLO-10", location: "Online", sessionType: "Solo", product: "Pakket 10", amount: 400, credits: 10, validityMonths: 4, active: true },
-  { code: "ON-DUO-LOS", baseCode: "ON-DUO-LOS", location: "Online", sessionType: "Duo", product: "Losse sessie", amount: 40, credits: 1, validityMonths: 0, active: true },
-  { code: "ON-DUO-10", baseCode: "ON-DUO-10", location: "Online", sessionType: "Duo", product: "Pakket 10", amount: 400, credits: 10, validityMonths: 4, active: true },
-  { code: "ON-SEMI-LOS", baseCode: "ON-SEMI-LOS", location: "Online", sessionType: "Semi PT", product: "Losse sessie", amount: 40, credits: 1, validityMonths: 0, active: true },
-  { code: "ON-SEMI-10", baseCode: "ON-SEMI-10", location: "Online", sessionType: "Semi PT", product: "Pakket 10", amount: 400, credits: 10, validityMonths: 4, active: true },
 ];
 
 /**
