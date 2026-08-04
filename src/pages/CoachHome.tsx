@@ -36,9 +36,23 @@ export default function CoachHome() {
 
   const now = today();
 
+  // Every hook runs before the loading check below. A hook placed after an
+  // early return is skipped on the loading render and present on the next one,
+  // which is React error #310 — and a black screen.
   const dayBlocks = useMemo(() => {
     if (!appointments) return [];
     return layout(toBlocks(appointments.filter((a) => a.date === now && a.status === "Gepland")));
+  }, [appointments, now]);
+
+  // The next appointment anywhere ahead, not only today.
+  const upNext = useMemo(() => {
+    if (!appointments) return null;
+    const clock = new Date().getHours() * 60 + new Date().getMinutes();
+    const ahead = appointments
+      .filter((a) => a.sessionId === undefined && a.status === "Gepland" && a.date >= now)
+      .filter((a) => a.date > now || minutesOf(a.startTime) >= clock)
+      .sort((a, b) => a.date.localeCompare(b.date) || a.startTime.localeCompare(b.startTime));
+    return ahead.length > 0 ? toBlocks([ahead[0]])[0] : null;
   }, [appointments, now]);
 
   if (!clients || !overview || !sessions || !settings || !appointments) return <Empty>Laden…</Empty>;
@@ -51,16 +65,6 @@ export default function CoachHome() {
   const intakesDone = intakes.filter((c) =>
     appointments.some((a) => a.clientId === c.id && a.status === "Gepland"),
   ).length;
-
-  // The next appointment anywhere ahead, not only today.
-  const upNext = useMemo(() => {
-    const clock = new Date().getHours() * 60 + new Date().getMinutes();
-    const ahead = appointments
-      .filter((a) => a.sessionId === undefined && a.status === "Gepland" && a.date >= now)
-      .filter((a) => a.date > now || minutesOf(a.startTime) >= clock)
-      .sort((a, b) => a.date.localeCompare(b.date) || a.startTime.localeCompare(b.startTime));
-    return ahead.length > 0 ? toBlocks([ahead[0]])[0] : null;
-  }, [appointments, now]);
 
   const cancelled = appointments.filter((a) => a.date === now && a.status === "Afgezegd");
 
