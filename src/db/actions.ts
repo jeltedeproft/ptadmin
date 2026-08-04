@@ -1,5 +1,5 @@
 import { db } from "./db";
-import type { Appointment, Session, SessionStatus } from "./schema";
+import { needsClient, type Appointment, type Session, type SessionStatus } from "./schema";
 import { bucketOf, isChargeable, isLooseSale } from "../domain/credits";
 
 /**
@@ -89,11 +89,34 @@ export async function planAppointment(
   base: Omit<Appointment, "id" | "clientId" | "status" | "groupId" | "sessionId">,
   clientIds: number[],
 ): Promise<void> {
+  // A personal block belongs to nobody: one row, no client, no group.
+  if (!needsClient(base.sessionType)) {
+    await db.appointments.add({ ...base, status: "Gepland" });
+    return;
+  }
   const groupId = clientIds.length > 1 ? await nextGroupId() : undefined;
   await db.transaction("rw", db.appointments, async () => {
     for (const clientId of clientIds) {
       await db.appointments.add({ ...base, clientId, status: "Gepland", groupId });
     }
+  });
+}
+
+/** Moves an appointment to another day, keeping the time. */
+export async function moveAppointment(id: number, date: string): Promise<void> {
+  await db.appointments.update(id, { date });
+}
+
+/** Moves a whole group — dragging a duo should not split it. */
+export async function moveGroup(appointment: Appointment, date: string): Promise<void> {
+  if (!appointment.groupId) return moveAppointment(appointment.id!, date);
+  const siblings = await db.appointments
+    .where("groupId")
+    .equals(appointment.groupId)
+    .and((a) => a.date === appointment.date && a.startTime === appointment.startTime)
+    .toArray();
+  await db.transaction("rw", db.appointments, async () => {
+    for (const a of siblings) await db.appointments.update(a.id!, { date });
   });
 }
 
@@ -106,11 +129,19 @@ export async function completeAppointment(
   appointment: Appointment,
   status: SessionStatus,
 ): Promise<void> {
+  // A personal block is not a session and never becomes one; ticking it off
+  // just marks it done. Using 0 as the marker keeps it out of every client's
+  // history while still counting as handled.
+  if (!needsClient(appointment.sessionType) || appointment.clientId === undefined) {
+    await db.appointments.update(appointment.id!, { sessionId: 0 });
+    return;
+  }
+
   const sessionId = await addSession({
     date: appointment.date,
     clientId: appointment.clientId,
     location: appointment.location,
-    sessionType: appointment.sessionType,
+    sessionType: appointment.sessionType as Session["sessionType"],
     status,
     groupId: appointment.groupId,
     note: appointment.note,

@@ -21,6 +21,18 @@ export function isChargeable(status: SessionStatus): boolean {
 }
 
 /**
+ * Whether this session actually consumes a credit.
+ *
+ * Status alone is not enough: an intake is a real session that gets logged and
+ * shows up in the history, but it is a first meeting and was never bought, so
+ * it never draws from a pack no matter how it went.
+ */
+export function chargesCredit(session: Pick<Session, "status" | "sessionType">): boolean {
+  if (session.sessionType === "Intake") return false;
+  return isChargeable(session.status);
+}
+
+/**
  * Credits are not fungible across the price matrix: a Privéruimte Solo pack
  * cannot pay for an Aan huis Duo session. Bucketing by location + session type
  * mirrors how OVERZICHT PER KLANT split its columns.
@@ -116,7 +128,7 @@ export function buildLedger(
   const uncoveredSessionIds: number[] = [];
 
   const chargeable = sessions
-    .filter((s) => isChargeable(s.status))
+    .filter(chargesCredit)
     .sort((a, b) => a.date.localeCompare(b.date) || (a.id ?? 0) - (b.id ?? 0));
 
   for (const session of chargeable) {

@@ -1,5 +1,5 @@
 // Smoke test for the money-relevant logic. Run with: npm test
-import { buildLedger, isChargeable, signalFor } from "../src/domain/credits";
+import { buildLedger, chargesCredit, isChargeable, signalFor } from "../src/domain/credits";
 import {
   addMonths,
   daysBetween,
@@ -20,11 +20,18 @@ import { toCsv } from "../src/domain/csv";
 import { buildIcs, upcoming } from "../src/domain/ics";
 import { invoiceMail, needsReminder, reminderMail } from "../src/domain/mail";
 import { toWhatsAppNumber, whatsAppLink } from "../src/domain/whatsapp";
-import { blockLabel, gridRange, layout, minutesOf, timeOf, toBlocks } from "../src/domain/agenda";
+import { blockLabel, gridRange, layout, minutesOf, timeOf, toBlocks, viewRange } from "../src/domain/agenda";
 
 import { hashCode, makeSalt, sameHash, verifyCode } from "../src/domain/lock";
 import { APPOINTMENTS, CLIENTS, PRICES, SESSIONS, SPECS, TRANSACTIONS } from "../src/sync/rows";
 import { DEFAULT_PRICES, DEFAULT_SETTINGS } from "../src/db/seed";
+import {
+  APPOINTMENT_TYPES,
+  SESSION_TYPES,
+  defaultDuration,
+  hasEditableDuration,
+  needsClient,
+} from "../src/db/schema";
 import type { Appointment, Client, InformEntry, Session, Transaction } from "../src/db/schema";
 import type { ClientOverview } from "../src/hooks/useData";
 
@@ -694,6 +701,49 @@ console.log("\nverjaardagen");
   check("over de jaarwissel", daysUntilBirthday("1990-01-02", "2026-12-30"), 3);
   check("29 februari in een gewoon jaar", daysUntilBirthday("1992-02-29", "2026-02-01") !== null, true);
   check("geen geboortedatum", daysUntilBirthday("", "2026-08-03"), null);
+}
+
+// ---------- afspraaktypes en weergaven ----------
+console.log("\nafspraaktypes en weergaven");
+{
+  check("duur volgt het type", [defaultDuration("Solo"), defaultDuration("Intake"), defaultDuration("Persoonlijk")], [60, 30, 60]);
+  check("enkel persoonlijk is aanpasbaar",
+    APPOINTMENT_TYPES.filter(hasEditableDuration), ["Persoonlijk"]);
+  check("enkel persoonlijk heeft geen klant nodig",
+    APPOINTMENT_TYPES.filter((t) => !needsClient(t)), ["Persoonlijk"]);
+  check("persoonlijk kan geen sessie zijn", SESSION_TYPES.includes("Persoonlijk" as never), false);
+  check("intake kan wel een sessie zijn", SESSION_TYPES.includes("Intake"), true);
+
+  // An intake is a real session but was never bought, so it never draws a credit.
+  check("intake kost nooit een credit",
+    chargesCredit({ status: "Uitgevoerd", sessionType: "Intake" }), false);
+  check("gewone sessie kost wel een credit",
+    chargesCredit({ status: "Uitgevoerd", sessionType: "Solo" }), true);
+  check("afgezegde sessie kost niets",
+    chargesCredit({ status: "Geannuleerd op tijd", sessionType: "Solo" }), false);
+
+  const withIntake = buildLedger(
+    [pack(1, "2026-01-10", 4)],
+    [sess(1, "2026-01-12"), { ...sess(2, "2026-01-13"), sessionType: "Intake" as never }],
+    "2026-02-01",
+  );
+  check("intake trekt geen credit af in het grootboek", withIntake.available, 9);
+
+  // Day, week and month.
+  check("dagweergave is één dag", viewRange("dag", "2026-08-05").days, ["2026-08-05"]);
+  const week = viewRange("week", "2026-08-05");
+  check("weekweergave telt zeven dagen", week.days.length, 7);
+  check("week begint op maandag", week.days[0], "2026-08-03");
+  check("week eindigt op zondag", week.days[6], "2026-08-09");
+
+  const month = viewRange("maand", "2026-08-15");
+  check("maand toont hele weken", month.days.length % 7, 0);
+  check("maandraster begint op een maandag",
+    new Date(`${month.days[0]}T00:00:00`).getDay(), 1);
+  check("maandraster omvat de eerste van de maand", month.days.includes("2026-08-01"), true);
+  check("maandraster omvat de laatste van de maand", month.days.includes("2026-08-31"), true);
+  // Augustus 2026 begint op zaterdag, dus het raster start in juli.
+  check("raster loopt door in de vorige maand", month.days[0] < "2026-08-01", true);
 }
 
 console.log(`\n${failures === 0 ? "Alles in orde." : `${failures} test(s) gefaald.`}`);

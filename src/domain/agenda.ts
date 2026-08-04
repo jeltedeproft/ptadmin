@@ -126,7 +126,51 @@ export function gridRange(blocks: Block[], defaultFrom = 7, defaultTo = 21): [nu
 }
 
 export function blockLabel(block: Block, nameOf: (id: number) => string): string {
-  const names = block.appointments.map((a) => nameOf(a.clientId));
+  const first = block.appointments[0];
+  if (first.sessionType === "Persoonlijk") return first.note?.trim() || "Persoonlijk";
+
+  const names = block.appointments
+    .map((a) => (a.clientId === undefined ? "" : nameOf(a.clientId)))
+    .filter(Boolean);
+  if (names.length === 0) return first.sessionType;
   if (names.length <= 2) return names.join(" + ");
   return `${names[0]} +${names.length - 1}`;
+}
+
+export type AgendaView = "dag" | "week" | "maand";
+
+/** The days one view covers, and how far an arrow steps. */
+export function viewRange(view: AgendaView, anchor: string): { days: string[]; step: number } {
+  const iso = (d: Date) =>
+    `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, "0")}-${String(d.getDate()).padStart(2, "0")}`;
+
+  if (view === "dag") return { days: [anchor], step: 1 };
+
+  const base = new Date(`${anchor}T00:00:00`);
+
+  if (view === "week") {
+    const monday = new Date(base);
+    monday.setDate(base.getDate() - ((base.getDay() + 6) % 7));
+    return {
+      days: Array.from({ length: 7 }, (_, i) => {
+        const d = new Date(monday);
+        d.setDate(monday.getDate() + i);
+        return iso(d);
+      }),
+      step: 7,
+    };
+  }
+
+  // A month grid always shows whole weeks, so it starts on the Monday on or
+  // before the first and runs to the Sunday on or after the last.
+  const first = new Date(base.getFullYear(), base.getMonth(), 1);
+  const last = new Date(base.getFullYear(), base.getMonth() + 1, 0);
+  const start = new Date(first);
+  start.setDate(first.getDate() - ((first.getDay() + 6) % 7));
+  const end = new Date(last);
+  end.setDate(last.getDate() + (7 - ((last.getDay() + 6) % 7)) - 1);
+
+  const days: string[] = [];
+  for (let d = new Date(start); d <= end; d.setDate(d.getDate() + 1)) days.push(iso(new Date(d)));
+  return { days, step: 0 };
 }

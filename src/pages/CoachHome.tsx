@@ -7,8 +7,15 @@ import { completeAppointment } from "../db/actions";
 import { SESSION_STATUSES, type Appointment, type SessionStatus } from "../db/schema";
 import { Field, Modal, Select } from "../components/ui";
 import { isChargeable } from "../domain/credits";
-import { blockLabel, layout, timeOf, toBlocks, type Block } from "../domain/agenda";
-import { addDays, daysUntilBirthday, formatDate, formatDateShort, today } from "../domain/dates";
+import { blockLabel, layout, minutesOf, timeOf, toBlocks, type Block } from "../domain/agenda";
+import {
+  addDays,
+  daysBetween,
+  daysUntilBirthday,
+  formatDate,
+  formatDateShort,
+  today,
+} from "../domain/dates";
 import { useClients, useOverview, useSessions, useSettings } from "../hooks/useData";
 
 /**
@@ -38,9 +45,23 @@ export default function CoachHome() {
 
   const nameOf = (id: number) => clients.find((c) => c.id === id)?.name ?? "Onbekend";
   const open = dayBlocks.filter((b) => !b.done);
-  const next = open.find((b) => b.start >= new Date().getHours() * 60 + new Date().getMinutes());
 
   const intakes = clients.filter((c) => c.status === "Intake");
+  // An intake counts as prepared once it has an appointment in the diary.
+  const intakesDone = intakes.filter((c) =>
+    appointments.some((a) => a.clientId === c.id && a.status === "Gepland"),
+  ).length;
+
+  // The next appointment anywhere ahead, not only today.
+  const upNext = useMemo(() => {
+    const clock = new Date().getHours() * 60 + new Date().getMinutes();
+    const ahead = appointments
+      .filter((a) => a.sessionId === undefined && a.status === "Gepland" && a.date >= now)
+      .filter((a) => a.date > now || minutesOf(a.startTime) >= clock)
+      .sort((a, b) => a.date.localeCompare(b.date) || a.startTime.localeCompare(b.startTime));
+    return ahead.length > 0 ? toBlocks([ahead[0]])[0] : null;
+  }, [appointments, now]);
+
   const cancelled = appointments.filter((a) => a.date === now && a.status === "Afgezegd");
 
   return (
@@ -48,14 +69,22 @@ export default function CoachHome() {
       <h1>{greeting()} {settings.tradeName || settings.businessName || ""}</h1>
       <p className="sub">{formatDate(now)}</p>
 
-      <div className="grid">
-        <Tile label="Sessies vandaag" value={dayBlocks.length} />
-        <Tile label="Nog af te werken" value={open.length} />
+      <div className="tiles">
+        <Tile
+          label="Sessies vandaag"
+          value={`${dayBlocks.length - open.length}/${dayBlocks.length}`}
+          sub={open.length === 0 && dayBlocks.length > 0 ? "alles afgewerkt" : "afgewerkt"}
+        />
+        <Tile
+          label="Intakes"
+          value={`${intakesDone}/${intakes.length}`}
+          sub={intakes.length === 0 ? "geen open intakes" : "voorbereid"}
+        />
         <Tile
           label="Eerstvolgende"
-          value={next ? timeOf(next.start) : dayBlocks.length ? "klaar" : "—"}
+          value={upNext ? timeOf(upNext.start) : "—"}
+          sub={upNext ? whenLabel(upNext.date, now) : "niets gepland"}
         />
-        <Tile label="Intakes" value={intakes.length} />
       </div>
 
       {cancelled.length > 0 && (
@@ -90,9 +119,16 @@ export default function CoachHome() {
                 )}
               </div>
               <div className="row">
-                <Link className="btn btn-sm" to={`/coach/klanten/${b.appointments[0].clientId}`}>
-                  Klant
-                </Link>
+                {b.appointments[0].clientId !== undefined && (
+                  <Link
+                    className="btn iconbtn"
+                    to={`/coach/klanten/${b.appointments[0].clientId}`}
+                    aria-label={`Klantgegevens van ${blockLabel(b, nameOf)}`}
+                    title="Klantgegevens"
+                  >
+                    <InfoIcon />
+                  </Link>
+                )}
                 {b.done ? (
                   <Badge tone="ok">Afgerond</Badge>
                 ) : (
@@ -135,12 +171,32 @@ function greeting(d = new Date()): string {
   return "Goeieavond";
 }
 
-function Tile({ label, value }: { label: string; value: number | string }) {
+function Tile({ label, value, sub }: { label: string; value: number | string; sub?: string }) {
   return (
     <div className="card kpi kpi-lg">
       <div className="label">{label}</div>
       <div className="value">{value}</div>
+      {sub && <div className="kpi-sub">{sub}</div>}
     </div>
+  );
+}
+
+/** "vandaag", "morgen", or the date — so the next appointment reads at a glance. */
+function whenLabel(date: string, now: string): string {
+  const diff = daysBetween(now, date);
+  if (diff === 0) return "vandaag";
+  if (diff === 1) return "morgen";
+  if (diff < 7) return formatDate(date).split(" ").slice(0, 2).join(" ");
+  return formatDateShort(date);
+}
+
+/** Client details. */
+function InfoIcon() {
+  return (
+    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.7" strokeLinecap="round" strokeLinejoin="round">
+      <circle cx="12" cy="12" r="9" />
+      <path d="M12 16v-4M12 8h.01" />
+    </svg>
   );
 }
 
@@ -290,7 +346,28 @@ function Actions({
     });
   }
 
-  void sessions;
+  // "Trainingsschema aanpassen": after an evaluation the programme is meant to
+  // be revisited. The trigger is real, so it is here; the destination is the
+  // client until programmes exist.
+  for (const o of overview) {
+    if (o.client.status !== "Actief" || !o.client.lastEvaluation) continue;
+    const since = daysBetween(o.client.lastEvaluation, now);
+    if (since < 0 || since > 14) continue;
+    const trainedSince = sessions.some(
+      (s) => s.clientId === o.client.id && s.date > o.client.lastEvaluation!,
+    );
+    if (!trainedSince) continue;
+    items.push({
+      key: `plan-${o.client.id}`,
+      to: `/coach/klanten/${o.client.id}`,
+      urgent: false,
+      text: (
+        <>
+          <strong>{o.client.name}</strong> — schema herbekijken na de evaluatie
+        </>
+      ),
+    });
+  }
 
   if (items.length === 0) {
     return (
@@ -327,6 +404,11 @@ function Actions({
           </div>
         </>
       )}
+
+      <p className="sub" style={{ marginTop: 14 }}>
+        Check-ins versturen komt erbij zodra klanten er een kunnen invullen — dat vraagt eerst het
+        klantenportaal.
+      </p>
     </>
   );
 }

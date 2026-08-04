@@ -13,8 +13,47 @@ export const PRICED_SESSION_TYPES = ["Solo", "Duo", "Semi PT"] as const;
 export type PricedSessionType = (typeof PRICED_SESSION_TYPES)[number];
 
 /** Session types that can be logged (SESSIES allows more than what is sold). */
-export const SESSION_TYPES = ["Solo", "Duo", "Semi PT", "Trio", "Quattro", "Drop-in"] as const;
+export const SESSION_TYPES = [
+  "Solo",
+  "Duo",
+  "Semi PT",
+  "Trio",
+  "Quattro",
+  "Drop-in",
+  "Intake",
+] as const;
 export type SessionType = (typeof SESSION_TYPES)[number];
+
+/**
+ * What can go in the agenda. Everything a session can be, plus two that only
+ * exist as an appointment:
+ *
+ *   Intake      — a first meeting. Becomes a session, but never costs a credit.
+ *   Persoonlijk — time blocked for himself. No client, and it never becomes a
+ *                 session at all.
+ */
+export const APPOINTMENT_TYPES = [...SESSION_TYPES, "Persoonlijk"] as const;
+export type AppointmentType = (typeof APPOINTMENT_TYPES)[number];
+
+/**
+ * Duration follows the type instead of being typed in every time: an hour for
+ * a training, half an hour for an intake. Only a personal block varies, so
+ * that is the only one with a field.
+ */
+export function defaultDuration(type: AppointmentType): number {
+  if (type === "Intake") return 30;
+  if (type === "Persoonlijk") return 60;
+  return 60;
+}
+
+export function hasEditableDuration(type: AppointmentType): boolean {
+  return type === "Persoonlijk";
+}
+
+/** A personal block belongs to nobody. */
+export function needsClient(type: AppointmentType): boolean {
+  return type !== "Persoonlijk";
+}
 
 export const PRODUCTS = ["Losse sessie", "Pakket 10"] as const;
 export type Product = (typeof PRODUCTS)[number];
@@ -239,9 +278,10 @@ export interface Appointment {
   /** "09:30", local time. */
   startTime: string;
   durationMinutes: number;
-  clientId: number;
+  /** Absent for a personal block. */
+  clientId?: number;
   location: Location;
-  sessionType: SessionType;
+  sessionType: AppointmentType;
   status: AppointmentStatus;
   groupId?: string;
   /** Set once logged as done; points at the session it became. */

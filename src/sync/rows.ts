@@ -351,8 +351,14 @@ export const APPOINTMENTS: TableSpec<Appointment> = {
   remote: "appointments",
   dependsOn: ["clients", "sessions"],
   toRow: (a, coachId, resolve) => {
-    const client = resolve("clients", a.clientId);
-    if (client === undefined) return null;
+    // A personal block has no client at all; anything else waits for its
+    // client to exist remotely before it can be sent.
+    let client: string | number | null = null;
+    if (a.clientId !== undefined) {
+      const resolved = resolve("clients", a.clientId);
+      if (resolved === undefined) return null;
+      client = resolved;
+    }
     return {
       coach_id: coachId,
       client_id: client,
@@ -368,8 +374,11 @@ export const APPOINTMENTS: TableSpec<Appointment> = {
     };
   },
   fromRow: (r, unresolve) => {
-    const clientId = unresolve("clients", r.client_id as number);
-    if (clientId === undefined) return null;
+    let clientId: number | undefined;
+    if (r.client_id !== null && r.client_id !== undefined) {
+      clientId = unresolve("clients", r.client_id as number);
+      if (clientId === undefined) return null;
+    }
     return {
       clientId,
       date: iso(r.date)!,

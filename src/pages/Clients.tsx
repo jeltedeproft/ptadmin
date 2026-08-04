@@ -37,7 +37,9 @@ export default function Clients() {
   const nextByClient = useMemo(() => {
     const map = new Map<number, string>();
     for (const a of appointments ?? []) {
-      if (a.sessionId || a.status !== "Gepland" || a.date < now) continue;
+      // Personal blocks have no client, so they never count as someone's next.
+      if (a.clientId === undefined) continue;
+      if (a.sessionId !== undefined || a.status !== "Gepland" || a.date < now) continue;
       const current = map.get(a.clientId);
       if (!current || a.date < current) map.set(a.clientId, a.date);
     }
